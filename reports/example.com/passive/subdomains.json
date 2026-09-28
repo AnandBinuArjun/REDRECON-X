@@ -1,0 +1,27 @@
+{
+  "target": "example.com",
+  "total_unique": 2,
+  "duplicates_removed": 1,
+  "subdomains": [
+    "example.com",
+    "www.example.com"
+  ],
+  "sources_breakdown": {
+    "Anubis DB": 0,
+    "DNS Brute Force": 1,
+    "Certificate Transparency": 0,
+    "AlienVault OTX": 0,
+    "HackerTarget": 2,
+    "Wayback Machine": 0
+  },
+  "provenance": {
+    "www.example.com": [
+      "DNS Brute Force",
+      "HackerTarget"
+    ],
+    "example.com": [
+      "HackerTarget",
+      "Target Scope"
+    ]
+  }
+}

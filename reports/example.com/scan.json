@@ -1,0 +1,408 @@
+{
+  "scan_id": "RX-20260928-f20fe2",
+  "target": "example.com",
+  "mode": "passive",
+  "status": "completed",
+  "started_at": "1970-01-01T00:28:23.722873Z",
+  "completed_at": "2026-09-28T07:07:53.336300Z",
+  "assets": [
+    {
+      "hostname": "example.com",
+      "root_domain": "example.com",
+      "ip_addresses": [
+        "172.66.147.243",
+        "104.20.23.154",
+        "2606:4700:10::6814:179a",
+        "2606:4700:10::ac42:93f3"
+      ],
+      "sources": [
+        "HackerTarget",
+        "Certificate Transparency",
+        "Target Scope"
+      ],
+      "dns_records": {
+        "A": [
+          "172.66.147.243",
+          "104.20.23.154"
+        ],
+        "AAAA": [
+          "2606:4700:10::6814:179a",
+          "2606:4700:10::ac42:93f3"
+        ],
+        "CNAME": [],
+        "MX": [
+          "0 "
+        ],
+        "TXT": [
+          "\"v=spf1 -all\"",
+          "\"_k2n1y4vw3qtb4skdx9e7dxt97qrmmq9\""
+        ],
+        "NS": [
+          "hera.ns.cloudflare.com",
+          "elliott.ns.cloudflare.com"
+        ]
+      },
+      "http_service": null,
+      "ports": [],
+      "historical_urls": [],
+      "security_headers": [],
+      "confidence": "HIGH",
+      "is_live": true,
+      "tags": [],
+      "created_at": "2026-09-28T07:07:53.336300Z",
+      "updated_at": "2026-09-28T07:07:53.336300Z"
+    },
+    {
+      "hostname": "www.example.com",
+      "root_domain": "example.com",
+      "ip_addresses": [
+        "172.66.147.243",
+        "104.20.23.154",
+        "2606:4700:10::6814:179a",
+        "2606:4700:10::ac42:93f3"
+      ],
+      "sources": [
+        "DNS Brute Force",
+        "HackerTarget",
+        "Certificate Transparency"
+      ],
+      "dns_records": {
+        "A": [
+          "172.66.147.243",
+          "104.20.23.154"
+        ],
+        "AAAA": [
+          "2606:4700:10::6814:179a",
+          "2606:4700:10::ac42:93f3"
+        ],
+        "CNAME": [],
+        "MX": [],
+        "TXT": [],
+        "NS": []
+      },
+      "http_service": null,
+      "ports": [],
+      "historical_urls": [],
+      "security_headers": [],
+      "confidence": "HIGH",
+      "is_live": true,
+      "tags": [],
+      "created_at": "2026-09-28T07:07:53.336300Z",
+      "updated_at": "2026-09-28T07:07:53.336300Z"
+    }
+  ],
+  "findings": [],
+  "metrics": {
+    "discovered_hosts": 2,
+    "live_hosts": 2,
+    "unique_ips": 4,
+    "http_services": 0,
+    "open_ports": 0,
+    "historical_urls": 0,
+    "nuclei_findings": 0,
+    "header_observations": 0,
+    "duplicate_assets": 4,
+    "scan_duration_sec": 16.64,
+    "sources_summary": {
+      "Certificate Transparency": 2,
+      "DNS": 2,
+      "Wayback": 0,
+      "HTTP": 0,
+      "Nmap": 0
+    }
+  },
+  "raw_data": {
+    "certificates": {
+      "target": "example.com",
+      "total_certificates": 13,
+      "discovered_count": 2,
+      "certificates": [
+        {
+          "id": "12809115180",
+          "dns_names": [
+            "example.com",
+            "example.edu",
+            "example.net",
+            "example.org"
+          ],
+          "not_before": "2025-11-20T00:00:00Z",
+          "not_after": "2026-11-20T23:59:59Z"
+        },
+        {
+          "id": "12822827438",
+          "dns_names": [
+            "example.com",
+            "example.edu",
+            "example.net",
+            "example.org",
+            "www.example.com",
+            "www.example.edu",
+            "www.example.net",
+            "www.example.org"
+          ],
+          "not_before": "2025-11-21T00:00:00Z",
+          "not_after": "2026-11-21T23:59:59Z"
+        },
+        {
+          "id": "12937142056",
+          "dns_names": [
+            "example.com",
+            "example.edu",
+            "example.net",
+            "example.org",
+            "www.example.com",
+            "www.example.edu",
+            "www.example.net",
+            "www.example.org"
+          ],
+          "not_before": "2025-12-02T00:00:00Z",
+          "not_after": "2026-12-02T23:59:59Z"
+        },
+        {
+          "id": "16163998675",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-07-29T21:52:13Z",
+          "not_after": "2026-10-27T22:00:51Z"
+        },
+        {
+          "id": "16164002413",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-07-29T21:52:31Z",
+          "not_after": "2026-10-27T22:00:51Z"
+        },
+        {
+          "id": "16164248667",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-07-29T22:09:26Z",
+          "not_after": "2026-10-27T22:17:20Z"
+        },
+        {
+          "id": "16164256171",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-07-29T22:10:08Z",
+          "not_after": "2026-10-27T22:17:21Z"
+        },
+        {
+          "id": "17232708246",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-09-17T00:00:00Z",
+          "not_after": "2026-12-13T21:47:42Z"
+        },
+        {
+          "id": "17383412688",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-09-24T00:00:00Z",
+          "not_after": "2026-12-21T09:32:54Z"
+        },
+        {
+          "id": "17433287100",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-09-26T22:34:35Z",
+          "not_after": "2026-12-25T22:43:19Z"
+        },
+        {
+          "id": "17433287993",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-09-26T22:34:50Z",
+          "not_after": "2026-12-25T22:43:20Z"
+        },
+        {
+          "id": "17433445379",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-09-26T22:48:57Z",
+          "not_after": "2026-12-25T22:56:35Z"
+        },
+        {
+          "id": "17433446883",
+          "dns_names": [
+            "*.example.com",
+            "example.com"
+          ],
+          "not_before": "2026-09-26T22:49:11Z",
+          "not_after": "2026-12-25T22:56:35Z"
+        }
+      ],
+      "subdomains": [
+        "example.com",
+        "www.example.com"
+      ]
+    },
+    "subdomains": {
+      "target": "example.com",
+      "total_unique": 2,
+      "duplicates_removed": 1,
+      "subdomains": [
+        "example.com",
+        "www.example.com"
+      ],
+      "sources_breakdown": {
+        "Anubis DB": 0,
+        "DNS Brute Force": 1,
+        "Certificate Transparency": 0,
+        "AlienVault OTX": 0,
+        "HackerTarget": 2,
+        "Wayback Machine": 0
+      },
+      "provenance": {
+        "www.example.com": [
+          "DNS Brute Force",
+          "HackerTarget"
+        ],
+        "example.com": [
+          "HackerTarget",
+          "Target Scope"
+        ]
+      }
+    },
+    "wayback": {
+      "target": "example.com",
+      "total_records": 0,
+      "unique_count": 0,
+      "urls": [],
+      "classified": {},
+      "summary_by_category": {}
+    },
+    "dns": {
+      "www.example.com": {
+        "hostname": "www.example.com",
+        "is_resolved": true,
+        "records": {
+          "A": [
+            "172.66.147.243",
+            "104.20.23.154"
+          ],
+          "AAAA": [
+            "2606:4700:10::6814:179a",
+            "2606:4700:10::ac42:93f3"
+          ],
+          "CNAME": [],
+          "MX": [],
+          "TXT": [],
+          "NS": []
+        }
+      },
+      "example.com": {
+        "hostname": "example.com",
+        "is_resolved": true,
+        "records": {
+          "A": [
+            "172.66.147.243",
+            "104.20.23.154"
+          ],
+          "AAAA": [
+            "2606:4700:10::6814:179a",
+            "2606:4700:10::ac42:93f3"
+          ],
+          "CNAME": [],
+          "MX": [
+            "0 "
+          ],
+          "TXT": [
+            "\"v=spf1 -all\"",
+            "\"_k2n1y4vw3qtb4skdx9e7dxt97qrmmq9\""
+          ],
+          "NS": [
+            "hera.ns.cloudflare.com",
+            "elliott.ns.cloudflare.com"
+          ]
+        }
+      }
+    },
+    "http": {},
+    "headers": {},
+    "nmap": {},
+    "nuclei": {},
+    "ip": {
+      "unique_ip_count": 4,
+      "unique_ips": [
+        "104.20.23.154",
+        "172.66.147.243",
+        "2606:4700:10::6814:179a",
+        "2606:4700:10::ac42:93f3"
+      ],
+      "ip_inventory": {
+        "104.20.23.154": {
+          "ip": "104.20.23.154",
+          "associated_hosts": [
+            "example.com",
+            "www.example.com"
+          ],
+          "ptr": null,
+          "cloud_provider": "cloudflare",
+          "is_private": false
+        },
+        "172.66.147.243": {
+          "ip": "172.66.147.243",
+          "associated_hosts": [
+            "example.com",
+            "www.example.com"
+          ],
+          "ptr": null,
+          "cloud_provider": "cloudflare",
+          "is_private": false
+        },
+        "2606:4700:10::6814:179a": {
+          "ip": "2606:4700:10::6814:179a",
+          "associated_hosts": [
+            "example.com",
+            "www.example.com"
+          ],
+          "ptr": null,
+          "cloud_provider": null,
+          "is_private": false
+        },
+        "2606:4700:10::ac42:93f3": {
+          "ip": "2606:4700:10::ac42:93f3",
+          "associated_hosts": [
+            "example.com",
+            "www.example.com"
+          ],
+          "ptr": null,
+          "cloud_provider": null,
+          "is_private": false
+        }
+      },
+      "host_to_ips": {
+        "www.example.com": [
+          "172.66.147.243",
+          "104.20.23.154",
+          "2606:4700:10::6814:179a",
+          "2606:4700:10::ac42:93f3"
+        ],
+        "example.com": [
+          "172.66.147.243",
+          "104.20.23.154",
+          "2606:4700:10::6814:179a",
+          "2606:4700:10::ac42:93f3"
+        ]
+      }
+    }
+  }
+}

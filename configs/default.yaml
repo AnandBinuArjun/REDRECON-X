@@ -1,0 +1,58 @@
+# REDRECON-X Default Configuration
+concurrency: 25
+timeout: 8.0
+retries: 2
+user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) REDRECON-X/1.0"
+verify_ssl: false
+
+output_dir: "reports"
+db_path: "reports/redrecon.db"
+
+dns_resolvers:
+  - "1.1.1.1"
+  - "8.8.8.8"
+  - "9.9.9.9"
+  - "8.8.4.4"
+
+dns_record_types:
+  - "A"
+  - "AAAA"
+  - "CNAME"
+  - "MX"
+  - "TXT"
+  - "NS"
+
+subdomain_providers:
+  - "crtsh"
+  - "wayback"
+  - "alienvault"
+  - "hackertarget"
+  - "anubis"
+  - "brute"
+
+enable_bruteforce: true
+bruteforce_limit: 100
+
+probe_http: true
+probe_https: true
+follow_redirects: true
+max_redirects: 5
+
+nmap:
+  enabled: true
+  top_ports: 100
+
+nuclei:
+  enabled: true
+  severity:
+    - "info"
+    - "low"
+    - "medium"
+    - "high"
+    - "critical"
+  rate_limit: 50
+
+scope:
+  allow_third_party: false
+  allowed_domains: []
+  excluded_domains: []
