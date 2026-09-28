@@ -267,6 +267,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="scan-meta">
       <div>Target: <strong>__TARGET__</strong></div>
       <div>Scan ID: <strong>__SCAN_ID__</strong></div>
+      <div>Developer: <strong>AnandBinuArjun</strong></div>
       <div>Duration: <strong>__DURATION__s</strong></div>
       <div>Completed: <strong>__COMPLETED__</strong></div>
     </div>
@@ -747,7 +748,7 @@ class HTMLReporter:
 <body>
   <div class="header">
     <h1>REDRECON-<span>X</span> Executive Attack-Surface Summary</h1>
-    <p style="color:#9ca3af;">Target: <strong>{scan.target}</strong> | Scan ID: <code>{scan.scan_id}</code> | Date: {scan.completed_at.strftime("%Y-%m-%d %H:%M") if scan.completed_at else "Recent"}</p>
+    <p style="color:#9ca3af;">Target: <strong>{scan.target}</strong> | Scan ID: <code>{scan.scan_id}</code> | Developer: <strong>AnandBinuArjun</strong> | Date: {scan.completed_at.strftime("%Y-%m-%d %H:%M") if scan.completed_at else "Recent"}</p>
   </div>
 
   <div class="kpi-grid">

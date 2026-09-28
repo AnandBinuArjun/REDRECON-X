@@ -233,6 +233,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="nav-link active" onclick="navigate('scans')">&#128269; Scans</div>
     <div class="nav-link" onclick="navigate('modules')">&#129513; Modules</div>
     <div class="nav-link" onclick="navigate('api')">&#9881; API Docs</div>
+    <div style="margin-top: auto; padding: 12px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border);">
+      Developer:<br><strong style="color: #fff;">AnandBinuArjun</strong>
+    </div>
   </div>
 
   <div class="main">

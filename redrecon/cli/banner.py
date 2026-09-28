@@ -19,6 +19,7 @@ def print_banner(version: str = "1.0.0"):
     banner_text.append(BANNER_ART, style="bold red")
     banner_text.append(f"\n      {TAGLINE}\n", style="bold white")
     banner_text.append(f"      [ Version {version} | Discover. Correlate. Understand. ]\n", style="dim cyan")
+    banner_text.append("      [ Developer: AnandBinuArjun ]\n", style="bold red")
 
     panel = Panel(
         banner_text,

@@ -2,7 +2,8 @@
 
 ### Modular Automated Web Reconnaissance & Attack-Surface Intelligence Framework
 
-> **Discover. Correlate. Understand.**
+> **Discover. Correlate. Understand.**  
+> **Developer:** [AnandBinuArjun](https://github.com/AnandBinuArjun)
 
 ```text
 ██████╗ ███████╗██████╗ ██████╗ ███████╗ ██████╗ ███╗   ██╗
@@ -374,6 +375,14 @@ All 14 unit and integration tests validate scope enforcement, deduplication effi
 
 ---
 
-## 10. Legal & Ethical Disclaimer
+## 10. Developer & Author
+
+- **Author**: AnandBinuArjun
+- **GitHub**: [@AnandBinuArjun](https://github.com/AnandBinuArjun)
+- **Repository**: [REDRECON-X](https://github.com/AnandBinuArjun/REDRECON-X)
+
+---
+
+## 11. Legal & Ethical Disclaimer
 
 > **IMPORTANT**: REDRECON-X is designed strictly for authorized penetration testing, security research, and vulnerability assessments on systems you own or have explicit written authorization to evaluate. Performing reconnaissance against third-party systems without prior authorization is illegal.
