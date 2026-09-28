@@ -23,6 +23,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          load: true
           push: false
           tags: redrecon-x:test
 
