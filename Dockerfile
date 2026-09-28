@@ -30,13 +30,15 @@ RUN ARCH=$(uname -m) && \
 
 WORKDIR /app
 
-# Copy dependency definitions and install
-COPY requirements.txt setup.py pyproject.toml ./
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -e .
+# Copy dependency definitions and install requirements first
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source
 COPY . .
+
+# Install package in container
+RUN pip install --no-cache-dir .
 
 # Create output volume mount
 VOLUME ["/app/reports"]
