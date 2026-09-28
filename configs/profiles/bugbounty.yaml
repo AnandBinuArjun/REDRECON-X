@@ -1,0 +1,42 @@
+# Bug Bounty Profile: Deep passive discovery, rate-limited active probing
+concurrency: 20
+timeout: 6.0
+retries: 2
+rate_limit: 15.0
+
+# Broad subdomain sources
+subdomain_providers:
+  - crtsh
+  - wayback
+  - alienvault
+  - hackertarget
+  - anubis
+  - brute
+
+enable_bruteforce: true
+bruteforce_limit: 250
+
+# HTTP Probing
+probe_http: true
+probe_https: true
+follow_redirects: true
+max_redirects: 5
+
+# Port scanning: Standard web & high-value service ports
+nmap_enabled: true
+nmap_top_ports: 50
+
+# Nuclei: Candidate misconfigurations & sensitive exposures
+nuclei_enabled: true
+nuclei_severity:
+  - low
+  - medium
+  - high
+  - critical
+nuclei_rate_limit: 25
+
+# Target Limits
+max_nmap_targets: 30
+max_nuclei_targets: 40
+max_http_targets: 200
+max_wayback_urls: 15000

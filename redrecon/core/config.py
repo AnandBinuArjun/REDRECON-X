@@ -96,12 +96,25 @@ class ScanConfig(BaseModel):
         return hashlib.sha256(dump.encode("utf-8")).hexdigest()[:16]
 
 
-def load_config(config_path: Optional[str] = None) -> ScanConfig:
+def load_config(config_path: Optional[str] = None, profile: Optional[str] = None) -> ScanConfig:
+    """
+    Load configuration from explicit file, specialized profile (e.g. bugbounty, pentest, fast, monitoring),
+    or fall back to configs/default.yaml.
+    """
+    if profile:
+        profile_path = Path(f"configs/profiles/{profile}.yaml")
+        if not profile_path.exists():
+            profile_path = Path(f"configs/{profile}.yaml")
+        if profile_path.exists():
+            with open(profile_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+                return ScanConfig(**data)
+
     if config_path and os.path.exists(config_path):
         with open(config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
             return ScanConfig(**data)
-    # Check default path
+
     default_cfg = Path("configs/default.yaml")
     if default_cfg.exists():
         with open(default_cfg, "r", encoding="utf-8") as f:

@@ -1,0 +1,25 @@
+# Attack Surface Monitoring Profile: Lightweight recurring drift monitoring
+concurrency: 20
+timeout: 5.0
+retries: 2
+
+# Core discovery sources
+subdomain_providers:
+  - crtsh
+  - alienvault
+  - hackertarget
+
+enable_bruteforce: false
+bruteforce_limit: 0
+
+# Passive-leaning: Lightweight port verification
+nmap_enabled: true
+nmap_top_ports: 20
+
+nuclei_enabled: false
+
+# Controlled resource footprint
+max_nmap_targets: 20
+max_nuclei_targets: 0
+max_http_targets: 100
+max_wayback_urls: 5000

@@ -1,0 +1,31 @@
+# Fast Triage Profile: Quick reconnaissance with tight timeouts
+concurrency: 50
+timeout: 3.5
+retries: 1
+rate_limit: null
+
+# Fast passive providers
+subdomain_providers:
+  - crtsh
+  - hackertarget
+  - alienvault
+
+enable_bruteforce: false
+bruteforce_limit: 0
+
+# Top common web ports only
+nmap_enabled: true
+nmap_top_ports: 20
+
+# Critical / High exposure checks only
+nuclei_enabled: true
+nuclei_severity:
+  - high
+  - critical
+nuclei_rate_limit: 100
+
+# Targets limits
+max_nmap_targets: 15
+max_nuclei_targets: 20
+max_http_targets: 50
+max_wayback_urls: 2000

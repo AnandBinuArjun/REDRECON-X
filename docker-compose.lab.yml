@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  # Mock Web Application with Defensive Header Omissions
+  lab-web:
+    image: nginx:alpine
+    container_name: redrecon-lab-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./tests/fixtures/lab_web:/usr/share/nginx/html:ro
+
+  # Mock API Server with Permissive CORS and Sensitive Exposure
+  lab-api:
+    image: python:3.12-alpine
+    container_name: redrecon-lab-api
+    ports:
+      - "8081:8081"
+    command: >
+      python -c "
+      import http.server, socketserver;
+      class H(http.server.SimpleHTTPRequestHandler):
+          def do_GET(self):
+              if self.path == '/.git/HEAD':
+                  self.send_response(200); self.end_headers(); self.wfile.write(b'ref: refs/heads/main\n'); return
+              if self.path == '/robots.txt':
+                  self.send_response(200); self.end_headers(); self.wfile.write(b'User-agent: *\nDisallow: /admin\n'); return
+              self.send_response(200); self.send_header('Access-Control-Allow-Origin', '*'); self.end_headers(); self.wfile.write(b'{\"status\":\"api_live\"}')
+      socketserver.TCPServer(('0.0.0.0', 8081), H).serve_forever()
+      "
+
+  # Controlled Target Host
+  lab-target:
+    image: alpine:latest
+    container_name: redrecon-lab-target
+    command: sleep 3600
