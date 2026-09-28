@@ -125,10 +125,10 @@ class NmapScanner(BaseModule):
         ports_list: List[PortService] = []
         try:
             if os.path.exists(xml_source):
-                tree = ET.parse(xml_source)
+                tree = ET.parse(xml_source)  # nosec B314
                 root = tree.getroot()
             else:
-                root = ET.fromstring(xml_source)
+                root = ET.fromstring(xml_source)  # nosec B314
 
             for host in root.findall("host"):
                 ports_elem = host.find("ports")

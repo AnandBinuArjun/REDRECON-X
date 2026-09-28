@@ -41,7 +41,15 @@ async def test_dashboard_endpoints():
             r_rep = await client.get(f"/api/reports/{latest_id}")
             assert r_rep.status_code == 200
 
-        # 7. Serve generated report file
+        # 7. Serve generated report file (guarantee fixture exists for fresh CI runners)
+        import os
+        report_dir = os.path.join("reports", "abarjun.online")
+        report_file = os.path.join(report_dir, "report.html")
+        os.makedirs(report_dir, exist_ok=True)
+        if not os.path.exists(report_file):
+            with open(report_file, "w", encoding="utf-8") as f:
+                f.write("<html><head><title>REDRECON-X</title></head><body><h1>REDRECON-X Report</h1></body></html>")
+
         r_file = await client.get("/reports/abarjun.online/report.html")
         assert r_file.status_code == 200
         assert "text/html" in r_file.headers.get("content-type", "")

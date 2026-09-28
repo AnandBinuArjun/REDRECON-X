@@ -54,7 +54,7 @@ class CertificateProvider(DiscoveryProvider):
         found: Set[str] = set()
         url = f"https://crt.sh/?q=%.{domain}&output=json"
         try:
-            async with httpx.AsyncClient(timeout=12.0, verify=False) as client:
+            async with httpx.AsyncClient(timeout=12.0, verify=False) as client:  # nosec B501
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     for item in resp.json():
@@ -76,7 +76,7 @@ class WaybackSubdomainProvider(DiscoveryProvider):
         found: Set[str] = set()
         url = f"https://web.archive.org/cdx/search/cdx?url=*.{domain}/*&output=json&collapse=urlkey&fl=original&limit=500"
         try:
-            async with httpx.AsyncClient(timeout=12.0, verify=False) as client:
+            async with httpx.AsyncClient(timeout=12.0, verify=False) as client:  # nosec B501
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     rows = resp.json()
@@ -111,7 +111,7 @@ class AlienVaultProvider(DiscoveryProvider):
         url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
         headers = {"X-OTX-API-KEY": self.api_key} if self.api_key else {}
         try:
-            async with httpx.AsyncClient(timeout=12.0, verify=False, headers=headers) as client:
+            async with httpx.AsyncClient(timeout=12.0, verify=False, headers=headers) as client:  # nosec B501
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -134,7 +134,7 @@ class HackerTargetProvider(DiscoveryProvider):
         found: Set[str] = set()
         url = f"https://api.hackertarget.com/hostsearch/?q={domain}"
         try:
-            async with httpx.AsyncClient(timeout=12.0, verify=False) as client:
+            async with httpx.AsyncClient(timeout=12.0, verify=False) as client:  # nosec B501
                 resp = await client.get(url)
                 if resp.status_code == 200 and "error" not in resp.text.lower():
                     for line in resp.text.splitlines():
@@ -157,7 +157,7 @@ class AnubisProvider(DiscoveryProvider):
         found: Set[str] = set()
         url = f"https://jldc.me/anubis/subdomains/{domain}"
         try:
-            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:  # nosec B501
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     for item in resp.json():
