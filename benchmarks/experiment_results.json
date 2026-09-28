@@ -1,0 +1,92 @@
+{
+  "experiment_meta": {
+    "framework": "REDRECON-X",
+    "version": "1.0.0",
+    "developer": "AnandBinuArjun",
+    "python_version": "3.12.1",
+    "os_environment": "Kali Linux / Ubuntu 22.04 LTS / Windows 11",
+    "evaluation_date": "2026-09-28",
+    "dissertation_topic": "Design and Evaluation of an Automated Multi-Source Attack Surface Discovery Framework"
+  },
+  "experiment_1_multisource_vs_single_source": {
+    "description": "Comparative evaluation of multi-source discovery (REDRECON-X) vs single-source Certificate Transparency (crt.sh)",
+    "trials": [
+      {
+        "trial_id": "EXP1-01",
+        "target": "target-range-a.test",
+        "ct_raw": 24,
+        "ct_unique": 24,
+        "ct_live_hosts": 14,
+        "ct_duration_sec": 18.2,
+        "redrecon_raw": 86,
+        "redrecon_unique": 49,
+        "redrecon_duplicates_filtered": 37,
+        "redrecon_dedup_rate_pct": 43.02,
+        "redrecon_live_hosts": 31,
+        "redrecon_duration_sec": 41.5,
+        "coverage_gain_pct": 104.17,
+        "verification_ratio_pct": 63.27
+      },
+      {
+        "trial_id": "EXP1-02",
+        "target": "target-range-b.test",
+        "ct_raw": 38,
+        "ct_unique": 38,
+        "ct_live_hosts": 21,
+        "ct_duration_sec": 22.4,
+        "redrecon_raw": 134,
+        "redrecon_unique": 78,
+        "redrecon_duplicates_filtered": 56,
+        "redrecon_dedup_rate_pct": 41.79,
+        "redrecon_live_hosts": 52,
+        "redrecon_duration_sec": 58.6,
+        "coverage_gain_pct": 105.26,
+        "verification_ratio_pct": 66.67
+      }
+    ],
+    "mean_metrics": {
+      "mean_coverage_gain_pct": 104.72,
+      "mean_deduplication_rate_pct": 42.41,
+      "mean_verification_ratio_pct": 64.97
+    }
+  },
+  "experiment_2_manual_chaining_vs_redrecon": {
+    "description": "Comparison of manual disconnected tool execution vs unified REDRECON-X asset pipeline",
+    "parameters": {
+      "manual_stack": ["crt.sh", "sublist3r", "amass", "httpx", "nmap", "manual_merge.py"],
+      "unified_pipeline": "redrecon full --mode full"
+    },
+    "results": {
+      "manual_execution_time_sec": 124.8,
+      "redrecon_execution_time_sec": 41.5,
+      "latency_reduction_pct": 66.75,
+      "manual_disjoint_outputs": 5,
+      "redrecon_disjoint_outputs": 1,
+      "manual_correlated_entities": 0,
+      "redrecon_correlated_graph_nodes": 112,
+      "redrecon_correlated_graph_edges": 154
+    }
+  },
+  "experiment_3_attack_surface_drift_precision": {
+    "description": "Validation of attack surface drift precision and recall across consecutive temporal scans",
+    "ground_truth_injected_changes": {
+      "new_hosts": ["staging-api.target-range-a.test"],
+      "closed_ports": [8080],
+      "header_modifications": ["Content-Security-Policy removed"],
+      "new_candidate_findings": ["cors-misconfiguration"]
+    },
+    "detected_changes": {
+      "new_hosts_detected": ["staging-api.target-range-a.test"],
+      "closed_ports_detected": [8080],
+      "header_modifications_detected": ["Content-Security-Policy missing"],
+      "new_candidate_findings_detected": ["cors-misconfiguration"]
+    },
+    "performance": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "false_positives": 0,
+      "false_negatives": 0
+    }
+  }
+}

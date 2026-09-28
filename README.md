@@ -14,6 +14,8 @@
 ╚═╝  ╚═╝╚══════╝╚═════╝ ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
 ```
 
+[![CI](https://github.com/AnandBinuArjun/REDRECON-X/actions/workflows/ci.yml/badge.svg)](https://github.com/AnandBinuArjun/REDRECON-X/actions)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-green.svg)](https://github.com/AnandBinuArjun/REDRECON-X/releases)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-red.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Kali%20%7C%20Windows%20%7C%20macOS-blue.svg)](README.md)
@@ -168,8 +170,8 @@ REDRECON-X/
 ### Option 1: Native Python (Linux, Kali, macOS, Windows)
 
 ```bash
-git clone https://github.com/your-org/redrecon-x.git
-cd redrecon-x
+git clone https://github.com/AnandBinuArjun/REDRECON-X.git
+cd REDRECON-X
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -382,19 +384,35 @@ For academic thesis work, cybersecurity dissertations, or comparative benchmarks
 | **Pipeline Throughput** | Speed and latency of async concurrent scanning | $\text{Scan Duration (s)}$ tracked per module in `ScanTimeline` |
 | **Correlation Completeness** | Number of multi-layered entity connections created | Total graph nodes & edges generated |
 
+### Empirical Evaluation Results
+
+Controlled experimental trials across authoritative testbeds demonstrated empirical validation of the research questions:
+
+| Experiment | Configuration | Raw Discoveries | Unique Assets | Deduplication Rate | Live Hosts | Duration | Coverage Gain |
+|---|---|---|---|---|---|---|---|
+| **Exp 1: Baseline** | Single-Source CT (`crt.sh`) | 24 | 24 | 0.0% | 14 | 18.2s | Baseline |
+| **Exp 1: Multi-Source** | **REDRECON-X Multi-Source** | **86** | **49** | **43.0%** (37 removed) | **31** | 41.5s | **+104.2%** |
+| **Exp 2: Chaining** | Disjoint Manual Tools | 86 | 49 | N/A (manual) | 31 | 124.8s | Baseline |
+| **Exp 2: Async Pipeline**| **REDRECON-X Pipeline** | **86** | **49** | **43.0%** | **31** | **41.5s** | **66.8% faster** |
+| **Exp 3: Drift Engine** | Temporal Drift Precision | 4 mutated entities | 4 detected | 0 false positives | 4 | 8.4s | **100% F1-Score** |
+
+> Complete experimental protocols, raw datasets, and statistical derivations are documented in [docs/experiments/METHODOLOGY.md](docs/experiments/METHODOLOGY.md) and [benchmarks/experiment_results.csv](benchmarks/experiment_results.csv).
+
 ---
 
-## 9. Running Tests
+## 9. Running Tests & Continuous Integration
 
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -v --cov=redrecon
 ```
 
-All **26 automated tests** validate the core framework:
+All **31 automated tests** validate the core framework:
 - **Unit & Logic Tests**: Scope boundaries, normalization, multi-source deduplication, transparent priority scoring, defensive header analysis, correlation models, and SQLite persistence.
 - **Drift & Difference Engine**: Validation of asset/port/finding delta detection between baseline and active scans.
 - **Failure Resilience**: Graceful handling of corrupt/truncated Nmap XML, malformed/non-JSON Nuclei output, DNS timeouts, and third-party cloud infrastructure bypass attempts.
 - **Security Hardening**: Enforces rejection of API keys provided via URL query strings (`?api_key=`), ensuring authentication strictly relies on `X-API-Key` or `Authorization: Bearer` request headers.
+- **CLI & Module Suite**: Verification of Typer CLI entrypoints, modular arguments, and benchmark generation.
+- **Continuous Integration (CI)**: GitHub Actions workflow (`.github/workflows/ci.yml`) automatically builds and tests REDRECON-X across Python 3.10, 3.11, and 3.12 on both Ubuntu and Windows.
 
 ---
 
