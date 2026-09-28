@@ -456,17 +456,19 @@ Controlled experimental trials across authoritative testbeds demonstrated empiri
 python -m pytest tests/ -v --cov=redrecon
 ```
 
-All **41 automated tests** validate the core framework:
+All **45 automated tests** validate the core framework:
+- **RBAC & Authentication (`tests/test_rbac_and_auth.py`)**: Validates PBKDF2-HMAC-SHA256 password hashing with cryptographic salt, automatic admin credential seeding, tamper-evident audit logging, and strict role-based access control across `ADMIN`, `ANALYST`, and `VIEWER` tiers.
 - **Unit & Logic Tests**: Scope boundaries, normalization, multi-source deduplication, transparent priority scoring, defensive header analysis, correlation models, and SQLite persistence.
-- **End-to-End Pipeline & Resilience**: End-to-end passive scan verification, graceful cancellation state preservation (`ScanStatus.CANCELLED`), unhandled exception recovery (`ScanStatus.FAILED`), and pre-pipeline boundary aborts.
+- **End-to-End Pipeline & Resilience**: Passive and active pipeline verification, graceful cancellation state preservation (`ScanStatus.CANCELLED`), unhandled exception recovery (`ScanStatus.FAILED`), and pre-pipeline boundary aborts.
 - **Drift & Difference Engine**: Validation of asset/port/finding delta detection between baseline and active scans.
 - **Failure Resilience**: Graceful handling of corrupt/truncated Nmap XML, malformed/non-JSON Nuclei output, DNS timeouts, and third-party cloud infrastructure bypass attempts.
 - **Security Hardening**: Enforces rejection of API keys provided via URL query strings (`?api_key=`), ensuring authentication strictly relies on `X-API-Key` or `Authorization: Bearer` request headers.
 - **CLI & Module Suite**: Verification of Typer CLI entrypoints, modular arguments, and benchmark generation.
-- **Multi-Platform CI/CD**:
+- **Multi-Platform CI/CD & Release Automation**:
   - `REDRECON-X CI` (`.github/workflows/ci.yml`): Matrix testing on Python 3.10, 3.11, and 3.12 across both Ubuntu and Windows runners.
-  - `Security Audit & SAST` (`.github/workflows/security.yml`): Bandit security linter and pip-audit dependency scanner.
-  - `Docker Build & Verification` (`.github/workflows/docker.yml`): Container compilation and CLI verification.
+  - `Security Audit & SAST` (`.github/workflows/security.yml`): Bandit security linter (0 issues) and pip-audit dependency scanner.
+  - `Docker Build & Verification` (`.github/workflows/docker.yml`): Multi-architecture container compilation and CLI verification.
+  - `Publish Release Artifacts` (`.github/workflows/release.yml`): Automated compilation and signing of wheel, sdist, and SHA256 checksums upon version tags.
 
 ---
 
