@@ -14,11 +14,12 @@
 ╚═╝  ╚═╝╚══════╝╚═════╝ ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
 ```
 
-[![CI](https://github.com/AnandBinuArjun/REDRECON-X/actions/workflows/ci.yml/badge.svg)](https://github.com/AnandBinuArjun/REDRECON-X/actions)
-[![Release](https://img.shields.io/badge/Release-v1.0.0-green.svg)](https://github.com/AnandBinuArjun/REDRECON-X/releases)
+[![CI Pipeline](https://github.com/AnandBinuArjun/REDRECON-X/actions/workflows/ci.yml/badge.svg)](https://github.com/AnandBinuArjun/REDRECON-X/actions)
+[![Security SAST](https://github.com/AnandBinuArjun/REDRECON-X/actions/workflows/security.yml/badge.svg)](https://github.com/AnandBinuArjun/REDRECON-X/actions)
+[![Docker Build](https://github.com/AnandBinuArjun/REDRECON-X/actions/workflows/docker.yml/badge.svg)](https://github.com/AnandBinuArjun/REDRECON-X/actions)
+[![Release](https://img.shields.io/github/v/release/AnandBinuArjun/REDRECON-X?color=green)](https://github.com/AnandBinuArjun/REDRECON-X/releases)
 [![Python Version](https://img.shields.io/badge/Python-3.10%2B-red.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Kali%20%7C%20Windows%20%7C%20macOS-blue.svg)](README.md)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](Dockerfile)
 
 ---
@@ -276,9 +277,13 @@ redrecon report example.com --type executive   # CISO & leadership risk posture 
 redrecon report example.com --type technical   # Detailed technical dossier
 ```
 
-### 8. Web Intelligence Dashboard & REST API (§35)
+### 8. Modern Linux Cyber Terminal Dashboard & REST API (§35)
 
-Launch the interactive web dashboard and REST API:
+REDRECON-X features a high-density, modern Linux cyber terminal console powered by FastAPI:
+- **Design System**: OLED background (`#030712`), Linux terminal window chrome with status telemetry, and `JetBrains Mono` monospace typography.
+- **Topology Graph**: Interactive Vis.js attack-surface graph visualizing entity relationships (`Domain` → `Subdomain` → `IP` → `Port` → `Finding`).
+- **Interactive Shell**: Embedded `/dev/pts/1` terminal shell for immediate command execution and modular probing.
+- **API Key Security**: Endpoints strictly require header authentication (`X-API-Key: <key>`); URL query parameter key leaks are rejected.
 
 ```bash
 redrecon dashboard --port 8000
@@ -289,13 +294,58 @@ Available REST Endpoints:
 - `POST /api/scans` — Trigger a new scan (`{"target": "example.com", "mode": "full"}`)
 - `GET  /api/scans/{id}` — Full scan details & correlated assets
 - `GET  /api/scans/{id}/diff` — Attack surface drift against previous baseline scan
-- `GET  /api/scans/{id}/graph` — Cytoscape / React Flow attack-surface graph
+- `GET  /api/scans/{id}/graph` — Vis.js attack-surface graph topology
 - `GET  /api/assets` — Query assets with filters (`?confidence=HIGH&min_priority=4`)
 - `GET  /api/assets/{id}` — Detailed asset entity by database ID
 - `GET  /api/findings` — Query findings with filters (`?severity=HIGH`)
 - `GET  /api/reports/{id}` — Report paths and artifact links
+- `GET  /reports/{target}/{filename}` — Stream interactive HTML & JSON reports
 
-### 9. Empirical Research Benchmark Engine
+### 9. Pre-configured Scan Profiles
+
+Select an operational profile tailored to your assessment engagement:
+
+```bash
+redrecon scan example.com --profile bugbounty    # Deep OSINT, full DNS, extensive HTTP probing
+redrecon scan example.com --profile pentest      # Full active scan with top-100 Nmap & Nuclei
+redrecon scan example.com --profile fast         # High-concurrency rapid asset discovery
+redrecon scan example.com --profile monitoring   # Lightweight recurring baseline drift check
+```
+
+Profiles are defined in `configs/profiles/*.yaml` and override default concurrency, timeouts, and module toggles cleanly.
+
+### 10. Scan Resource Controls & Bounds
+
+To ensure stability across massive external domains, REDRECON-X enforces strict bounding limits:
+```yaml
+# configs/default.yaml
+scan_limits:
+  max_subdomains: 500       # Capped to avoid unbounded DNS lookups
+  max_http_targets: 150     # Limit for active HTTP/HTTPS probing
+  max_nmap_targets: 25      # Active port scan IP threshold
+  max_nuclei_targets: 50    # Vulnerability scan target threshold
+  max_wayback_urls: 10000   # Archive URL extraction boundary
+concurrency: 25             # Async worker pipeline concurrency
+timeout: 8.0                # Socket and HTTP timeout limit (seconds)
+```
+
+### 11. Automated Notifications & Webhook Dispatcher
+
+Configure webhooks in your profile or environment (`REDRECON_WEBHOOK_URL`) to receive real-time JSON alerts for:
+- `SCAN_COMPLETED`: Scan summary with asset and finding metrics.
+- `ATTACK_SURFACE_DRIFT`: Alerts on newly exposed assets, new open ports, or altered HTTP response headers.
+- `SECURITY_FINDING_ALERT`: Critical and High severity candidate findings.
+
+### 12. Controlled Cyber Range Test Lab
+
+Evaluate the complete framework in an offline, reproducible environment:
+```bash
+docker-compose -f docker-compose.lab.yml up -d
+redrecon scan lab.redrecon.local --mode full
+```
+The lab simulates an enterprise multi-tier environment (Web, API, DNS server, vulnerable apps) for controlled benchmark evaluation.
+
+### 13. Empirical Research Benchmark Engine
 
 For academic evaluation and dissertation defense, REDRECON-X provides a dedicated benchmark command that measures multi-source yield, deduplication performance, and live verification ratios against single-source Certificate Transparency:
 
@@ -406,13 +456,17 @@ Controlled experimental trials across authoritative testbeds demonstrated empiri
 python -m pytest tests/ -v --cov=redrecon
 ```
 
-All **31 automated tests** validate the core framework:
+All **41 automated tests** validate the core framework:
 - **Unit & Logic Tests**: Scope boundaries, normalization, multi-source deduplication, transparent priority scoring, defensive header analysis, correlation models, and SQLite persistence.
+- **End-to-End Pipeline & Resilience**: End-to-end passive scan verification, graceful cancellation state preservation (`ScanStatus.CANCELLED`), unhandled exception recovery (`ScanStatus.FAILED`), and pre-pipeline boundary aborts.
 - **Drift & Difference Engine**: Validation of asset/port/finding delta detection between baseline and active scans.
 - **Failure Resilience**: Graceful handling of corrupt/truncated Nmap XML, malformed/non-JSON Nuclei output, DNS timeouts, and third-party cloud infrastructure bypass attempts.
 - **Security Hardening**: Enforces rejection of API keys provided via URL query strings (`?api_key=`), ensuring authentication strictly relies on `X-API-Key` or `Authorization: Bearer` request headers.
 - **CLI & Module Suite**: Verification of Typer CLI entrypoints, modular arguments, and benchmark generation.
-- **Continuous Integration (CI)**: GitHub Actions workflow (`.github/workflows/ci.yml`) automatically builds and tests REDRECON-X across Python 3.10, 3.11, and 3.12 on both Ubuntu and Windows.
+- **Multi-Platform CI/CD**:
+  - `REDRECON-X CI` (`.github/workflows/ci.yml`): Matrix testing on Python 3.10, 3.11, and 3.12 across both Ubuntu and Windows runners.
+  - `Security Audit & SAST` (`.github/workflows/security.yml`): Bandit security linter and pip-audit dependency scanner.
+  - `Docker Build & Verification` (`.github/workflows/docker.yml`): Container compilation and CLI verification.
 
 ---
 
