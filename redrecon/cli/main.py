@@ -17,7 +17,10 @@ from redrecon.cli.commands import (
     run_subdomains_command,
     run_wayback_command,
 )
-from redrecon.core.logger import console
+from redrecon.core.logger import console, init_error_tracking
+
+# Initialize error tracking if SENTRY_DSN is configured
+init_error_tracking()
 
 app = typer.Typer(
     name="redrecon",

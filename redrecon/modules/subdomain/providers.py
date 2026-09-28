@@ -2,10 +2,11 @@ import asyncio
 import json
 import re
 from abc import ABC, abstractmethod
-from typing import List, Set
+from typing import List, Optional, Set
 import dns.asyncresolver
 import httpx
 from redrecon.core.logger import get_logger
+from redrecon.core.scope import normalize_domain
 
 logger = get_logger()
 
@@ -38,11 +39,8 @@ class DiscoveryProvider(ABC):
         pass
 
     def _clean_host(self, host: str, domain: str) -> str:
-        host = host.lower().strip()
-        if host.startswith("*."):
-            host = host[2:]
-        host = host.rstrip(".")
-        if (host == domain or host.endswith(f".{domain}")) and re.match(r"^[a-z0-9.-]+$", host):
+        host = normalize_domain(host, strip_wildcard=True)
+        if host and (host == domain or host.endswith(f".{domain}")) and re.match(r"^[a-z0-9.-]+$", host):
             return host
         return ""
 
@@ -101,6 +99,9 @@ class WaybackSubdomainProvider(DiscoveryProvider):
 
 
 class AlienVaultProvider(DiscoveryProvider):
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+
     @property
     def name(self) -> str:
         return "AlienVault OTX"
@@ -108,8 +109,9 @@ class AlienVaultProvider(DiscoveryProvider):
     async def discover(self, domain: str) -> Set[str]:
         found: Set[str] = set()
         url = f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/passive_dns"
+        headers = {"X-OTX-API-KEY": self.api_key} if self.api_key else {}
         try:
-            async with httpx.AsyncClient(timeout=12.0, verify=False) as client:
+            async with httpx.AsyncClient(timeout=12.0, verify=False, headers=headers) as client:
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     data = resp.json()

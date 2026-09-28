@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 from redrecon.core.logger import get_logger
 from redrecon.modules.base import BaseModule
 from redrecon.modules.subdomain.providers import (
@@ -27,7 +27,7 @@ class SubdomainScanner(BaseModule):
         self.providers: List[DiscoveryProvider] = [
             CertificateProvider(),
             WaybackSubdomainProvider(),
-            AlienVaultProvider(),
+            AlienVaultProvider(api_key=self.config.otx_api_key),
             HackerTargetProvider(),
             AnubisProvider(),
         ]
@@ -44,14 +44,33 @@ class SubdomainScanner(BaseModule):
     def description(self) -> str:
         return "Multi-source enumeration combining CT logs, archives, threat feeds, and DNS probing"
 
-    async def scan(self, domain: str) -> Dict[str, Any]:
+    async def scan(
+        self,
+        domain: str,
+        skip_providers: Optional[List[str]] = None,
+        preloaded_results: Optional[Dict[str, List[str]]] = None,
+    ) -> Dict[str, Any]:
         logger.info(f"Starting multi-source subdomain discovery for: [bold cyan]{domain}[/bold cyan]")
         results_by_provider: Dict[str, List[str]] = {}
         subdomain_sources: Dict[str, Set[str]] = {}
         all_discovered: Set[str] = set()
         total_raw_findings = 0
+        skip_set = set(skip_providers or [])
+
+        # Integrate preloaded provider results if provided
+        if preloaded_results:
+            for prov_name, hosts in preloaded_results.items():
+                results_by_provider[prov_name] = sorted(list(hosts))
+                total_raw_findings += len(hosts)
+                for h in hosts:
+                    if h not in subdomain_sources:
+                        subdomain_sources[h] = set()
+                    subdomain_sources[h].add(prov_name)
+                    all_discovered.add(h)
 
         async def _run_provider(provider: DiscoveryProvider):
+            if provider.name in skip_set:
+                return
             nonlocal total_raw_findings
             try:
                 hosts = await provider.discover(domain)

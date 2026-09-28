@@ -92,12 +92,33 @@ class ReconEngine:
         # -------------------------------------------------------------
         timeline.start_stage("passive_discovery")
 
-        # Run Subdomain scanner (which concurrently runs CT + Wayback providers) and direct CT/Wayback queries
-        sub_task = sub_scanner.scan(norm_target)
-        wb_task = wayback_scanner.scan(norm_target)
+        # 1. Query Certificate Transparency and Wayback Archive once
         ct_task = cert_scanner.scan(norm_target)
+        wb_task = wayback_scanner.scan(norm_target)
+        ct_res, wb_res = await asyncio.gather(ct_task, wb_task)
 
-        sub_res, wb_res, ct_res = await asyncio.gather(sub_task, wb_task, ct_task)
+        # 2. Extract hostnames from Wayback URLs
+        from urllib.parse import urlparse
+        wb_hosts = set()
+        for u in wb_res.get("urls", []):
+            try:
+                h = urlparse(u).netloc.split(":")[0].lower()
+                if h == norm_target or h.endswith(f".{norm_target}"):
+                    wb_hosts.add(h)
+            except Exception:
+                pass
+
+        preloaded = {
+            "Certificate Transparency": ct_res.get("subdomains", []),
+            "Wayback Machine": sorted(list(wb_hosts)),
+        }
+
+        # 3. Run remaining discovery providers without redundant duplicate requests
+        sub_res = await sub_scanner.scan(
+            norm_target,
+            skip_providers=["Certificate Transparency", "Wayback Machine"],
+            preloaded_results=preloaded,
+        )
         raw_data["subdomains"] = sub_res
         raw_data["wayback"] = wb_res
         raw_data["certificates"] = ct_res

@@ -8,6 +8,7 @@ from redrecon.modules.headers.analyzer import HeaderAnalyzer
 from redrecon.modules.wayback.scanner import WaybackScanner
 from redrecon.modules.nmap.scanner import NmapScanner
 from redrecon.modules.nuclei.scanner import NucleiScanner
+from redrecon.reporting.generator import ReportGenerator
 
 MODULE_REGISTRY = {
     "01": ("Certificate Transparency", CertificateScanner),
@@ -21,7 +22,7 @@ MODULE_REGISTRY = {
     "09": ("Wayback URL Discovery", WaybackScanner),
     "10": ("Nmap Port Scanner", NmapScanner),
     "11": ("Nuclei Scanner", NucleiScanner),
-    "12": ("Report Generator", None),
+    "12": ("Report Generator", ReportGenerator),
 }
 
 __all__ = [

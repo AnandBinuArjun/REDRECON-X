@@ -1,23 +1,59 @@
 import asyncio
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Security, Depends, Header
+from fastapi.security.api_key import APIKeyHeader
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
 from redrecon.core.config import ScanConfig, load_config
 from redrecon.core.engine import ReconEngine
+from redrecon.core.logger import get_logger, init_error_tracking
+from redrecon.core.scope import ScopeValidator
 from redrecon.intelligence.correlation import AssetCorrelator
 from redrecon.models.scan import ScanMode
 from redrecon.modules import MODULE_REGISTRY
 from redrecon.storage.database import Database
 from redrecon.storage.repository import ScanRepository
 
+logger = get_logger()
+init_error_tracking()
+
 app = FastAPI(title="REDRECON-X Intelligence Dashboard", version="1.0.0")
 
 db = Database()
 repo = ScanRepository(db)
+cfg = load_config()
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def verify_api_key(
+    api_key: Optional[str] = Security(api_key_header),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Validates API key against REDRECON_API_KEY if configured.
+    If no key is configured in environment or YAML, allows localhost access.
+    """
+    expected_key = os.getenv("REDRECON_API_KEY") or cfg.api_secret_key
+    if not expected_key:
+        return True
+
+    if api_key and api_key == expected_key:
+        return True
+
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        if token == expected_key:
+            return True
+
+    raise HTTPException(
+        status_code=401,
+        detail="Unauthorized: Missing or invalid API key in 'X-API-Key' or 'Authorization' header",
+    )
 
 
 class NewScanRequest(BaseModel):
@@ -275,9 +311,22 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     function openNewScan() { document.getElementById('scanModal').style.display = 'flex'; }
     function closeNewScan() { document.getElementById('scanModal').style.display = 'none'; }
 
+    function getAuthHeaders() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const key = urlParams.get('api_key') || localStorage.getItem('redrecon_api_key') || '';
+      return key ? { 'X-API-Key': key } : {};
+    }
+
     async function loadScans() {
       try {
-        const res = await fetch('/api/scans');
+        const res = await fetch('/api/scans', { headers: getAuthHeaders() });
+        if (res.status === 401) {
+          const key = prompt('Authentication required. Enter REDRECON API key:');
+          if (key) {
+            localStorage.setItem('redrecon_api_key', key.trim());
+            return loadScans();
+          }
+        }
         const scans = await res.json();
         document.getElementById('totalScans').innerText = scans.length;
 
@@ -329,7 +378,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       alert(`Recon initiated for ${target} [${mode}]. Scan running in background.`);
       await fetch('/api/scan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ target, mode })
       });
       setTimeout(loadScans, 2000);
@@ -348,12 +397,12 @@ def index():
     return DASHBOARD_HTML
 
 
-@app.get("/api/scans")
+@app.get("/api/scans", dependencies=[Depends(verify_api_key)])
 def list_scans():
     return repo.list_scans()
 
 
-@app.get("/api/scans/{scan_id}")
+@app.get("/api/scans/{scan_id}", dependencies=[Depends(verify_api_key)])
 def get_scan(scan_id: str):
     scan = repo.get_scan(scan_id)
     if not scan:
@@ -361,7 +410,7 @@ def get_scan(scan_id: str):
     return scan
 
 
-@app.get("/api/scans/{scan_id}/graph")
+@app.get("/api/scans/{scan_id}/graph", dependencies=[Depends(verify_api_key)])
 def get_scan_graph(scan_id: str):
     scan = repo.get_scan(scan_id)
     if not scan:
@@ -369,7 +418,7 @@ def get_scan_graph(scan_id: str):
     return AssetCorrelator.generate_attack_surface_graph(scan.target, scan.assets)
 
 
-@app.get("/api/modules")
+@app.get("/api/modules", dependencies=[Depends(verify_api_key)])
 def list_modules():
     return [
         {"code": code, "name": name, "class": cls.__name__ if cls else "Reporter"}
@@ -378,15 +427,24 @@ def list_modules():
 
 
 async def _background_scan(target: str, mode: str):
-    engine = ReconEngine()
-    scan_mode = ScanMode.PASSIVE if mode == "passive" else ScanMode.FULL
-    await engine.run_scan(target, mode=scan_mode)
+    try:
+        engine = ReconEngine()
+        scan_mode = ScanMode.PASSIVE if mode == "passive" else ScanMode.FULL
+        await engine.run_scan(target, mode=scan_mode)
+    except Exception as e:
+        logger.error(f"Background scan error for {target}: {e}", exc_info=True)
 
 
-@app.post("/api/scan")
+@app.post("/api/scan", dependencies=[Depends(verify_api_key)])
 def trigger_scan(req: NewScanRequest, background_tasks: BackgroundTasks):
-    background_tasks.add_task(_background_scan, req.target, req.mode)
-    return {"message": "Scan queued", "target": req.target, "mode": req.mode}
+    norm_target = ScopeValidator.normalize_host(req.target, strip_wildcard=True)
+    if not ScopeValidator.is_valid_domain(norm_target):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid target domain: {req.target}. Must be a valid FQDN or IP.",
+        )
+    background_tasks.add_task(_background_scan, norm_target, req.mode)
+    return {"message": "Scan queued", "target": norm_target, "mode": req.mode}
 
 
 def start_dashboard(host: str = "127.0.0.1", port: int = 8000):

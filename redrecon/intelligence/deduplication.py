@@ -3,6 +3,9 @@ from typing import Dict, List, Set, Tuple
 from urllib.parse import urlparse
 
 
+from redrecon.core.scope import normalize_domain
+
+
 class AssetDeduplicator:
     """
     Normalizes and deduplicates hostnames, IPs, and URLs across multiple discovery sources.
@@ -12,22 +15,7 @@ class AssetDeduplicator:
     @staticmethod
     def normalize_host(host: str) -> str:
         """Sanitize and normalize hostname."""
-        if not host:
-            return ""
-        host = host.lower().strip()
-        # Remove schemes if present
-        if "://" in host:
-            host = host.split("://", 1)[1]
-        # Remove paths and query strings
-        host = host.split("/")[0]
-        # Remove port numbers
-        host = host.split(":")[0]
-        # Strip wildcard prefixes (*.)
-        if host.startswith("*."):
-            host = host[2:]
-        # Strip trailing dots
-        host = host.rstrip(".")
-        return host
+        return normalize_domain(host, strip_wildcard=True)
 
     @staticmethod
     def normalize_url(url: str) -> str:

@@ -3,6 +3,7 @@ import re
 from typing import Any, Dict, List, Set
 import httpx
 from redrecon.core.logger import get_logger
+from redrecon.core.scope import normalize_domain
 from redrecon.modules.base import BaseModule
 
 logger = get_logger()
@@ -113,15 +114,9 @@ class CertificateScanner(BaseModule):
     def _normalize_hosts(self, raw_hosts: Set[str], domain: str) -> Set[str]:
         cleaned = set()
         for host in raw_hosts:
-            host = host.lower().strip()
-            # Strip wildcard prefixes like *.
-            if host.startswith("*."):
-                host = host[2:]
-            # Remove any trailing periods
-            host = host.rstrip(".")
+            host = normalize_domain(host, strip_wildcard=True)
             # Ensure it is a subdomain or the target domain itself
-            if host == domain or host.endswith(f".{domain}"):
-                # Basic check for valid hostname chars
+            if host and (host == domain or host.endswith(f".{domain}")):
                 if re.match(r"^[a-z0-9.-]+$", host):
                     cleaned.add(host)
         return cleaned

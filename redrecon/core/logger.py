@@ -72,3 +72,24 @@ def get_logger() -> logging.Logger:
     if _logger is None:
         _logger = setup_logger()
     return _logger
+
+
+def init_error_tracking(dsn: Optional[str] = None) -> bool:
+    """Initialize remote exception tracking (e.g. Sentry) if DSN is configured."""
+    import os
+    effective_dsn = dsn or os.getenv("SENTRY_DSN")
+    if not effective_dsn:
+        return False
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=effective_dsn,
+            traces_sample_rate=0.2,
+            environment=os.getenv("ENV", "production"),
+            release="redrecon-x@1.0.0",
+        )
+        get_logger().info("Remote error tracking (Sentry) connected successfully.")
+        return True
+    except Exception as e:
+        get_logger().debug(f"Failed to initialize Sentry error tracking: {e}")
+        return False

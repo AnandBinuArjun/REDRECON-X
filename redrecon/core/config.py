@@ -69,6 +69,15 @@ class ScanConfig(BaseModel):
     nuclei_severity: List[str] = Field(default_factory=lambda: ["info", "low", "medium", "high", "critical"])
     nuclei_rate_limit: int = 50
 
+    # API Keys & External Providers (loaded from env by default)
+    otx_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("OTX_API_KEY"))
+    shodan_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("SHODAN_API_KEY"))
+    virustotal_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("VIRUSTOTAL_API_KEY"))
+
+    # Observability & Security
+    sentry_dsn: Optional[str] = Field(default_factory=lambda: os.getenv("SENTRY_DSN"))
+    api_secret_key: Optional[str] = Field(default_factory=lambda: os.getenv("REDRECON_API_KEY"))
+
     # Scope
     allowed_domains: List[str] = Field(default_factory=list)
     excluded_domains: List[str] = Field(default_factory=list)

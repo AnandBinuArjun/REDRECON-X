@@ -33,6 +33,21 @@ DOMAIN_REGEX = re.compile(
 )
 
 
+def normalize_domain(host: str, strip_wildcard: bool = False) -> str:
+    """Canonical domain and host normalizer across all REDRECON-X modules."""
+    if not host:
+        return ""
+    host = host.strip().lower()
+    if "://" in host:
+        host = host.split("://", 1)[1]
+    host = host.split("/")[0]
+    host = host.split(":")[0]
+    if strip_wildcard and host.startswith("*."):
+        host = host[2:]
+    host = host.rstrip(".")
+    return host
+
+
 class ScopeValidator:
     """
     Enforces authorization and boundary constraints for active and passive recon.
@@ -46,29 +61,19 @@ class ScopeValidator:
         excluded_domains: Optional[List[str]] = None,
         allow_third_party: bool = False,
     ):
-        self.target_domain = self.normalize_host(target_domain)
-        self.allowed_domains = [self.normalize_host(d) for d in (allowed_domains or [])]
+        self.target_domain = self.normalize_host(target_domain, strip_wildcard=True)
+        self.allowed_domains = [self.normalize_host(d, strip_wildcard=False) for d in (allowed_domains or [])]
         if not self.allowed_domains:
             self.allowed_domains = [self.target_domain, f"*.{self.target_domain}"]
 
-        self.excluded_domains = [self.normalize_host(d) for d in (excluded_domains or [])]
+        self.excluded_domains = [self.normalize_host(d, strip_wildcard=False) for d in (excluded_domains or [])]
         self.allow_third_party = allow_third_party
         self._third_party_patterns = THIRD_PARTY_DOMAINS
 
     @staticmethod
-    def normalize_host(host: str) -> str:
+    def normalize_host(host: str, strip_wildcard: bool = False) -> str:
         """Strip protocol, port, path, and whitespace."""
-        if not host:
-            return ""
-        host = host.strip().lower()
-        if host.startswith("http://"):
-            host = host[7:]
-        elif host.startswith("https://"):
-            host = host[8:]
-        host = host.split("/")[0]
-        host = host.split(":")[0]
-        host = host.rstrip(".")
-        return host
+        return normalize_domain(host, strip_wildcard=strip_wildcard)
 
     @staticmethod
     def is_valid_domain(domain: str) -> bool:
