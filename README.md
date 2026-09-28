@@ -185,18 +185,22 @@ docker run --rm -v $(pwd)/reports:/app/reports redrecon-x scan example.com --mod
 
 ## 5. Usage & CLI Commands
 
-### 1. Full Reconnaissance Mode (Default)
+### 1. Full Reconnaissance Mode
 Executes the complete pipeline: Scope Check &rarr; CT &rarr; Subdomains &rarr; DNS &rarr; IP &rarr; HTTP/HTTPS &rarr; Headers &rarr; Wayback &rarr; Nmap/Ports &rarr; Nuclei/Security &rarr; Asset Correlation &rarr; Reporting.
 
 ```bash
-redrecon scan example.com --mode full
+redrecon full example.com                      # Direct command
+# or:
+redrecon scan example.com --mode full          # Standard command
 ```
 
 ### 2. Passive Reconnaissance Mode
 Discovers certificates, subdomains, archive URLs, and DNS records without launching active port probes or intrusive vulnerability scans.
 
 ```bash
-redrecon scan example.com --mode passive
+redrecon passive example.com                   # Direct command
+# or:
+redrecon scan example.com --mode passive       # Standard command
 ```
 
 ### 3. Individual Modular Execution

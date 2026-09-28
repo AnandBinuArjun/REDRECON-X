@@ -42,6 +42,26 @@ def scan(
     asyncio.run(run_scan_command(target, mode=mode, config_path=config, concurrency=concurrency, timeout=timeout))
 
 
+@app.command("full", help="Run full reconnaissance pipeline (Active + Passive + Nmap + Nuclei).")
+def full_cmd(
+    target: str = typer.Argument(..., help="Authorized target domain or IP (e.g. example.com)"),
+    config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to custom configuration YAML"),
+    concurrency: Optional[int] = typer.Option(None, "--concurrency", "-t", help="Max concurrent workers"),
+    timeout: Optional[float] = typer.Option(None, "--timeout", help="Network timeout in seconds"),
+):
+    asyncio.run(run_scan_command(target, mode="full", config_path=config, concurrency=concurrency, timeout=timeout))
+
+
+@app.command("passive", help="Run passive-only reconnaissance pipeline (CT + Subdomains + Wayback + DNS).")
+def passive_cmd(
+    target: str = typer.Argument(..., help="Authorized target domain or IP (e.g. example.com)"),
+    config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to custom configuration YAML"),
+    concurrency: Optional[int] = typer.Option(None, "--concurrency", "-t", help="Max concurrent workers"),
+    timeout: Optional[float] = typer.Option(None, "--timeout", help="Network timeout in seconds"),
+):
+    asyncio.run(run_scan_command(target, mode="passive", config_path=config, concurrency=concurrency, timeout=timeout))
+
+
 @app.command("modules", help="List all 12 discovery, scanning, and correlation modules.")
 def modules():
     list_modules_command()
