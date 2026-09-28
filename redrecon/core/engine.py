@@ -157,6 +157,7 @@ class ReconEngine:
         # STAGE 1: Passive Discovery (CT, Subdomains, Wayback)
         # -------------------------------------------------------------
         timeline.start_stage("passive_discovery")
+        self.repo.update_scan_progress(scan_id, "passive_discovery", 15, "Executing Certificate Transparency & Wayback Discovery")
 
         # 1. Query Certificate Transparency and Wayback Archive once
         ct_task = cert_scanner.scan(norm_target)
@@ -210,6 +211,7 @@ class ReconEngine:
         # STAGE 2: DNS & IP Resolution
         # -------------------------------------------------------------
         timeline.start_stage("dns_ip_resolution")
+        self.repo.update_scan_progress(scan_id, "dns_ip_resolution", 35, f"Resolving DNS & IP records for {len(scoped_hosts)} targets")
         dns_results = await dns_scanner.scan_hosts(scoped_hosts)
         raw_data["dns"] = dns_results
 
@@ -234,6 +236,7 @@ class ReconEngine:
         # STAGE 3: Active Reconnaissance (HTTP, Headers, Nmap, Nuclei)
         # -------------------------------------------------------------
         if mode == ScanMode.FULL:
+            self.repo.update_scan_progress(scan_id, "http_port_probing", 55, "Probing active HTTP services and ports")
             logger.info(f"Initiating active probing for [bold cyan]{len(live_dns_hosts)}[/bold cyan] live targets...")
 
             # 3a. HTTP Probing
@@ -268,6 +271,7 @@ class ReconEngine:
 
             # 3d. Nuclei / Heuristic Security Checks
             timeline.start_stage("security_scanning")
+            self.repo.update_scan_progress(scan_id, "vulnerability_scanning", 75, "Auditing candidate security exposures")
             web_targets = [h_data.get("url") for h_data in http_results.values() if h_data.get("url")]
             if not web_targets:
                 web_targets = [f"https://{norm_target}"]
@@ -282,6 +286,7 @@ class ReconEngine:
         # STAGE 4: Asset Intelligence & Correlation
         # -------------------------------------------------------------
         timeline.start_stage("asset_correlation")
+        self.repo.update_scan_progress(scan_id, "asset_correlation", 88, "Correlating assets and computing priority scores")
         prov_dict = {h: list(srcs) for h, srcs in provenance_map.items()}
         wayback_urls = wb_res.get("urls", [])
 
@@ -379,6 +384,7 @@ class ReconEngine:
         # -------------------------------------------------------------
         # 1. Save to SQLite database
         self.repo.save_scan(scan_result)
+        self.repo.update_scan_progress(scan_id, "completed", 100, f"Scan complete in {metrics.scan_duration_sec}s")
 
         # 2. Export organized JSON directories
         JSONReporter.export(scan_result, base_dir=self.config.output_dir)

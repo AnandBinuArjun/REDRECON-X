@@ -249,3 +249,173 @@ class ScanRepository:
                 )
                 for r in rows
             ]
+
+    def delete_scan(self, scan_id: str) -> bool:
+        """Delete scan and all associated assets, findings, and progress records."""
+        with self.db.get_connection() as conn:
+            conn.execute("DELETE FROM assets WHERE scan_id = ?", (scan_id,))
+            conn.execute("DELETE FROM findings WHERE scan_id = ?", (scan_id,))
+            conn.execute("DELETE FROM scan_progress WHERE scan_id = ?", (scan_id,))
+            cursor = conn.execute("DELETE FROM scans WHERE scan_id = ?", (scan_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    # -------------------------------------------------------------
+    # Scan Progress Tracking
+    # -------------------------------------------------------------
+    def update_scan_progress(
+        self,
+        scan_id: str,
+        current_stage: str,
+        progress_percent: int,
+        message: Optional[str] = None,
+    ) -> None:
+        """Update live execution stage and percentage for active scan."""
+        with self.db.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO scan_progress (scan_id, current_stage, progress_percent, message, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(scan_id) DO UPDATE SET
+                    current_stage=excluded.current_stage,
+                    progress_percent=excluded.progress_percent,
+                    message=excluded.message,
+                    updated_at=excluded.updated_at
+                """,
+                (scan_id, current_stage, progress_percent, message or "", datetime.now().isoformat()),
+            )
+            conn.commit()
+
+    def get_scan_progress(self, scan_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve current scan stage and percentage."""
+        with self.db.get_connection() as conn:
+            row = conn.execute("SELECT * FROM scan_progress WHERE scan_id = ?", (scan_id,)).fetchone()
+            if not row:
+                return None
+            return {
+                "scan_id": row["scan_id"],
+                "current_stage": row["current_stage"],
+                "progress_percent": row["progress_percent"],
+                "message": row["message"],
+                "updated_at": row["updated_at"],
+            }
+
+    # -------------------------------------------------------------
+    # User Management & RBAC Authentication
+    # -------------------------------------------------------------
+    @staticmethod
+    def _hash_pw(password: str, salt: Optional[str] = None) -> tuple[str, str]:
+        import hashlib, secrets
+        salt = salt or secrets.token_hex(16)
+        pw_hash = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000).hex()
+        return pw_hash, salt
+
+    def create_user(self, username: str, password: str, role: str = "ANALYST") -> Dict[str, Any]:
+        """Create new user with specified RBAC role (ADMIN, ANALYST, VIEWER)."""
+        import uuid
+        role = role.upper()
+        if role not in ("ADMIN", "ANALYST", "VIEWER"):
+            raise ValueError(f"Invalid role: {role}. Must be ADMIN, ANALYST, or VIEWER.")
+        
+        pw_hash, salt = self._hash_pw(password)
+        user_id = str(uuid.uuid4())
+        created_at = datetime.now().isoformat()
+        with self.db.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO users (id, username, password_hash, salt, role, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(username) DO UPDATE SET
+                    password_hash=excluded.password_hash,
+                    salt=excluded.salt,
+                    role=excluded.role
+                """,
+                (user_id, username.lower().strip(), pw_hash, salt, role, created_at),
+            )
+            conn.commit()
+        return {"id": user_id, "username": username, "role": role, "created_at": created_at}
+
+    def verify_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+        """Verify username & password and return user object if valid."""
+        with self.db.get_connection() as conn:
+            row = conn.execute("SELECT * FROM users WHERE username = ?", (username.lower().strip(),)).fetchone()
+            if not row:
+                return None
+            expected_hash, _ = self._hash_pw(password, salt=row["salt"])
+            if expected_hash == row["password_hash"]:
+                return {
+                    "id": row["id"],
+                    "username": row["username"],
+                    "role": row["role"],
+                    "created_at": row["created_at"],
+                }
+            return None
+
+    def get_user(self, username: str) -> Optional[Dict[str, Any]]:
+        """Retrieve user details without password hash."""
+        with self.db.get_connection() as conn:
+            row = conn.execute("SELECT id, username, role, created_at FROM users WHERE username = ?", (username.lower().strip(),)).fetchone()
+            if not row:
+                return None
+            return dict(row)
+
+    def list_users(self) -> List[Dict[str, Any]]:
+        """List all registered system users."""
+        with self.db.get_connection() as conn:
+            rows = conn.execute("SELECT id, username, role, created_at FROM users ORDER BY created_at ASC").fetchall()
+            return [dict(r) for r in rows]
+
+    def delete_user(self, username: str) -> bool:
+        """Delete user by username."""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("DELETE FROM users WHERE username = ?", (username.lower().strip(),))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def init_default_admin(self) -> None:
+        """Initialize default admin if user table is empty."""
+        with self.db.get_connection() as conn:
+            count = conn.execute("SELECT COUNT(*) as count FROM users").fetchone()["count"]
+            if count == 0:
+                import os
+                default_pw = os.getenv("REDRECON_ADMIN_PASSWORD", "RedReconAdmin!2026")
+                self.create_user(username="admin", password=default_pw, role="ADMIN")
+                self.log_audit(
+                    username="system",
+                    action="INIT_DEFAULT_ADMIN",
+                    resource="users/admin",
+                    status="SUCCESS",
+                    details="Initialized default administrative account",
+                )
+
+    # -------------------------------------------------------------
+    # Audit Logging
+    # -------------------------------------------------------------
+    def log_audit(
+        self,
+        username: str,
+        action: str,
+        resource: Optional[str] = None,
+        status: str = "SUCCESS",
+        details: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> None:
+        """Record administrative or operational audit log event."""
+        with self.db.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO audit_logs (username, action, resource, status, details, ip_address, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (username, action, resource or "", status, details or "", ip_address or "127.0.0.1", datetime.now().isoformat()),
+            )
+            conn.commit()
+
+    def list_audit_logs(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Retrieve recent security and operational audit logs."""
+        with self.db.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]

@@ -44,9 +44,42 @@ CREATE TABLE IF NOT EXISTS findings (
     FOREIGN KEY(scan_id) REFERENCES scans(scan_id)
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    salt TEXT NOT NULL,
+    role TEXT NOT NULL, -- ADMIN, ANALYST, VIEWER
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    username TEXT,
+    action TEXT NOT NULL,
+    resource TEXT,
+    status TEXT NOT NULL,
+    details TEXT,
+    ip_address TEXT,
+    timestamp TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scan_progress (
+    scan_id TEXT PRIMARY KEY,
+    current_stage TEXT NOT NULL,
+    progress_percent INTEGER NOT NULL,
+    message TEXT,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(scan_id) REFERENCES scans(scan_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_assets_scan_id ON assets(scan_id);
 CREATE INDEX IF NOT EXISTS idx_assets_hostname ON assets(hostname);
 CREATE INDEX IF NOT EXISTS idx_findings_scan_id ON findings(scan_id);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(username);
 """
 
 

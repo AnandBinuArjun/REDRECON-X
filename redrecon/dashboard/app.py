@@ -26,40 +26,90 @@ app = FastAPI(title="REDRECON-X Intelligence Dashboard", version="1.0.0")
 
 db = Database()
 repo = ScanRepository(db)
+repo.init_default_admin()
 cfg = load_config()
 
+SESSION_STORE: Dict[str, Dict[str, Any]] = {}
+RUNNING_SCAN_TASKS: Dict[str, asyncio.Task] = {}
+RATE_LIMIT_STORE: Dict[str, List[float]] = {}
+
+
+def check_rate_limit(client_ip: str, max_requests: int = 120, window_sec: int = 60) -> None:
+    now = datetime.now().timestamp()
+    history = RATE_LIMIT_STORE.setdefault(client_ip, [])
+    RATE_LIMIT_STORE[client_ip] = [t for t in history if now - t < window_sec]
+    if len(RATE_LIMIT_STORE[client_ip]) >= max_requests:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
+    RATE_LIMIT_STORE[client_ip].append(now)
+
+
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def get_current_user(
+    api_key: Optional[str] = Security(api_key_header),
+    authorization: Optional[str] = Header(None),
+) -> Dict[str, Any]:
+    expected_key = os.getenv("REDRECON_API_KEY") or cfg.api_secret_key
+
+    # 1. Direct API Key check (granted ADMIN permissions)
+    if expected_key and api_key and api_key == expected_key:
+        return {"username": "admin_api_key", "role": "ADMIN", "auth_type": "api_key"}
+
+    # 2. Session Token / Bearer Header
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        if expected_key and token == expected_key:
+            return {"username": "admin_bearer", "role": "ADMIN", "auth_type": "api_key"}
+        if token in SESSION_STORE:
+            return SESSION_STORE[token]
+
+    # 3. Development localhost fallback if no secret key configured
+    if not expected_key:
+        return {"username": "local_dev", "role": "ADMIN", "auth_type": "local"}
+
+    raise HTTPException(
+        status_code=401,
+        detail="Unauthorized: Missing or invalid API key / bearer session token in request header",
+    )
 
 
 def verify_api_key(
     api_key: Optional[str] = Security(api_key_header),
     authorization: Optional[str] = Header(None),
 ):
-    """
-    Validates API key against REDRECON_API_KEY if configured.
-    If no key is configured in environment or YAML, allows localhost access.
-    """
-    expected_key = os.getenv("REDRECON_API_KEY") or cfg.api_secret_key
-    if not expected_key:
-        return True
+    """Backward compatible auth dependency returning True or raising HTTPException."""
+    get_current_user(api_key=api_key, authorization=authorization)
+    return True
 
-    if api_key and api_key == expected_key:
-        return True
 
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ", 1)[1].strip()
-        if token == expected_key:
-            return True
+def require_role(allowed_roles: List[str]):
+    def dependency(user: Dict[str, Any] = Depends(get_current_user)):
+        role = user.get("role", "VIEWER").upper()
+        if role not in [r.upper() for r in allowed_roles]:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Forbidden: Insufficient privileges. Required role: {', '.join(allowed_roles)} (Current: {role})",
+            )
+        return user
+    return dependency
 
-    raise HTTPException(
-        status_code=401,
-        detail="Unauthorized: Missing or invalid API key in 'X-API-Key' or 'Authorization' header",
-    )
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "ANALYST"
 
 
 class NewScanRequest(BaseModel):
     target: str
     mode: str = "full"
+    profile: Optional[str] = None
 
 
 DASHBOARD_HTML = """<!DOCTYPE html>
@@ -1380,26 +1430,147 @@ def list_modules():
     ]
 
 
-async def _background_scan(target: str, mode: str):
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    user = repo.verify_user(req.username, req.password)
+    if not user:
+        repo.log_audit(req.username, "LOGIN_FAILED", "auth/login", "FAILURE", "Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    import secrets
+    token = secrets.token_hex(24)
+    SESSION_STORE[token] = user
+    repo.log_audit(user["username"], "LOGIN_SUCCESS", "auth/login", "SUCCESS", f"User logged in with role {user['role']}")
+    return {"token": token, "username": user["username"], "role": user["role"]}
+
+
+@app.get("/api/auth/me")
+def get_me(user: Dict[str, Any] = Depends(get_current_user)):
+    return user
+
+
+@app.post("/api/auth/logout")
+def logout(authorization: Optional[str] = Header(None)):
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+        SESSION_STORE.pop(token, None)
+    return {"message": "Logged out successfully"}
+
+
+@app.get("/api/users", dependencies=[Depends(require_role(["ADMIN"]))])
+def list_users():
+    return repo.list_users()
+
+
+@app.post("/api/users", dependencies=[Depends(require_role(["ADMIN"]))])
+def create_user(req: CreateUserRequest, user: Dict[str, Any] = Depends(get_current_user)):
     try:
-        engine = ReconEngine()
-        scan_mode = ScanMode.PASSIVE if mode == "passive" else ScanMode.FULL
-        await engine.run_scan(target, mode=scan_mode)
+        new_u = repo.create_user(req.username, req.password, req.role)
+        repo.log_audit(user["username"], "CREATE_USER", f"users/{req.username}", "SUCCESS", f"Created user with role {req.role}")
+        return new_u
     except Exception as e:
-        logger.error(f"Background scan error for {target}: {e}", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/scan", dependencies=[Depends(verify_api_key)])
-@app.post("/api/scans", dependencies=[Depends(verify_api_key)])
-def trigger_scan(req: NewScanRequest, background_tasks: BackgroundTasks):
+@app.delete("/api/users/{username}", dependencies=[Depends(require_role(["ADMIN"]))])
+def delete_user(username: str, user: Dict[str, Any] = Depends(get_current_user)):
+    if username.lower() == "admin":
+        raise HTTPException(status_code=400, detail="Cannot delete default admin user")
+    deleted = repo.delete_user(username)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="User not found")
+    repo.log_audit(user["username"], "DELETE_USER", f"users/{username}", "SUCCESS")
+    return {"message": f"User '{username}' deleted successfully"}
+
+
+@app.get("/api/audit-logs", dependencies=[Depends(require_role(["ADMIN"]))])
+def get_audit_logs(limit: int = 100):
+    return repo.list_audit_logs(limit=limit)
+
+
+@app.delete("/api/scans/{scan_id}", dependencies=[Depends(require_role(["ADMIN"]))])
+def delete_scan(scan_id: str, user: Dict[str, Any] = Depends(get_current_user)):
+    deleted = repo.delete_scan(scan_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    repo.log_audit(user["username"], "DELETE_SCAN", f"scans/{scan_id}", "SUCCESS")
+    return {"message": f"Scan '{scan_id}' and all associated assets/findings deleted"}
+
+
+@app.get("/api/scans/{scan_id}/progress", dependencies=[Depends(verify_api_key)])
+def get_scan_progress(scan_id: str):
+    prog = repo.get_scan_progress(scan_id)
+    if not prog:
+        scan = repo.get_scan(scan_id)
+        if not scan:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        pct = 100 if scan.status.value == "completed" else 0
+        return {"scan_id": scan_id, "current_stage": scan.status.value, "progress_percent": pct, "message": scan.status.value}
+    return prog
+
+
+@app.post("/api/scans/{scan_id}/cancel", dependencies=[Depends(require_role(["ADMIN", "ANALYST"]))])
+def cancel_scan(scan_id: str, user: Dict[str, Any] = Depends(get_current_user)):
+    task = RUNNING_SCAN_TASKS.get(scan_id)
+    if task and not task.done():
+        task.cancel()
+        repo.update_scan_progress(scan_id, "cancelled", 100, f"Cancelled by user {user.get('username')}")
+        repo.log_audit(user["username"], "CANCEL_SCAN", f"scans/{scan_id}", "SUCCESS")
+        return {"message": f"Scan '{scan_id}' cancellation signal sent"}
+    
+    scan = repo.get_scan(scan_id)
+    if scan and scan.status.value == "running":
+        repo.update_scan_progress(scan_id, "cancelled", 100, f"Cancelled by user {user.get('username')}")
+        repo.log_audit(user["username"], "CANCEL_SCAN", f"scans/{scan_id}", "SUCCESS")
+        return {"message": f"Scan '{scan_id}' marked as cancelled"}
+    
+    return {"message": f"Scan '{scan_id}' is not currently running"}
+
+
+async def _background_scan(target: str, mode: str, profile: Optional[str] = None, scan_id: Optional[str] = None):
+    try:
+        config = load_config(profile=profile) if profile else None
+        engine = ReconEngine(config=config)
+        scan_mode = ScanMode.PASSIVE if mode == "passive" else ScanMode.FULL
+        await engine.run_scan(target, mode=scan_mode, scan_id=scan_id)
+    except asyncio.CancelledError:
+        logger.warning(f"Background scan for {target} ({scan_id}) was cancelled.")
+    except Exception as e:
+        logger.error(f"Background scan error for {target} ({scan_id}): {e}", exc_info=True)
+    finally:
+        if scan_id:
+            RUNNING_SCAN_TASKS.pop(scan_id, None)
+
+
+@app.post("/api/scan", dependencies=[Depends(require_role(["ADMIN", "ANALYST"]))])
+@app.post("/api/scans", dependencies=[Depends(require_role(["ADMIN", "ANALYST"]))])
+async def trigger_scan(
+    req: NewScanRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
     norm_target = ScopeValidator.normalize_host(req.target, strip_wildcard=True)
     if not ScopeValidator.is_valid_domain(norm_target):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid target domain: {req.target}. Must be a valid FQDN or IP.",
         )
-    background_tasks.add_task(_background_scan, norm_target, req.mode)
-    return {"message": "Scan queued", "target": norm_target, "mode": req.mode}
+    
+    import uuid
+    scan_id = f"RX-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:6]}"
+    
+    loop = asyncio.get_running_loop()
+    task = loop.create_task(_background_scan(norm_target, req.mode, req.profile, scan_id=scan_id))
+    RUNNING_SCAN_TASKS[scan_id] = task
+    
+    repo.log_audit(user.get("username", "operator"), "TRIGGER_SCAN", norm_target, "SUCCESS", f"Triggered {req.mode} scan ({scan_id})")
+    
+    return {
+        "message": "Scan queued",
+        "scan_id": scan_id,
+        "target": norm_target,
+        "mode": req.mode,
+        "profile": req.profile or "default",
+    }
 
 
 def start_dashboard(host: str = "127.0.0.1", port: int = 8000):
