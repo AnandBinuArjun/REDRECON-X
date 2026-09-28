@@ -22,6 +22,7 @@ setup(
         "fastapi>=0.100.0",
         "uvicorn>=0.23.0",
         "jinja2>=3.1.0",
+        "aiofiles>=23.0.0",
     ],
     entry_points={
         "console_scripts": [

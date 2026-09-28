@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Security, Depends, Header
 from fastapi.security.api_key import APIKeyHeader
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
@@ -493,6 +494,27 @@ def get_report(scan_id: str):
             "html_technical": f"reports/{scan.target}/technical_report.html",
         }
     }
+
+
+@app.get("/reports/{target}/{filename}")
+def serve_report_file(target: str, filename: str):
+    """Serve generated HTML and JSON report files for browser viewing."""
+    reports_base = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "reports"))
+    if not os.path.exists(reports_base):
+        reports_base = os.path.abspath("reports")
+
+    target_clean = os.path.basename(target)
+    filename_clean = os.path.basename(filename)
+    file_path = os.path.join(reports_base, target_clean, filename_clean)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Report file '{filename_clean}' for target '{target_clean}' not found.",
+        )
+
+    media_type = "text/html" if file_path.endswith(".html") else "application/json" if file_path.endswith(".json") else None
+    return FileResponse(file_path, media_type=media_type)
 
 
 @app.get("/api/modules", dependencies=[Depends(verify_api_key)])

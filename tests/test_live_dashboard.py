@@ -40,3 +40,9 @@ async def test_dashboard_endpoints():
             # 6. Report info API
             r_rep = await client.get(f"/api/reports/{latest_id}")
             assert r_rep.status_code == 200
+
+        # 7. Serve generated report file
+        r_file = await client.get("/reports/abarjun.online/report.html")
+        assert r_file.status_code == 200
+        assert "text/html" in r_file.headers.get("content-type", "")
+        assert "REDRECON-X" in r_file.text
