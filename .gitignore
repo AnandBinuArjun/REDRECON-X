@@ -2,8 +2,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
+*.egg-info
 dist/
 build/
 .pytest_cache/
-reports/*.db
-reports/*/
+reports/
+.env
+.env.*
