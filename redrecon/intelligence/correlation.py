@@ -144,7 +144,8 @@ class AssetCorrelator:
             )
             assets.append(asset)
 
-        return AssetPrioritizer.prioritize_assets(assets)
+        findings_map = {h: len(flist) for h, flist in findings_by_host.items()}
+        return AssetPrioritizer.prioritize_assets(assets, findings_map=findings_map)
 
     @classmethod
     def generate_attack_surface_graph(cls, root_domain: str, assets: List[Asset]) -> Dict[str, Any]:

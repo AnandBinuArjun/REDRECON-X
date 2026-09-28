@@ -586,9 +586,12 @@ class HTMLReporter:
             sources = " ".join([f'<span class="tag">{s}</span>' for s in a.sources])
             badge_class = f"badge-{a.confidence.value.lower()}"
 
+            pri_color = "#ef4444" if a.priority_score >= 6 else "#f59e0b" if a.priority_score >= 4 else "#3b82f6"
+            pri_badge = f'<span class="badge" style="background:rgba(239,68,68,0.15); color:{pri_color}; border:1px solid {pri_color}; margin-top:4px;" title="{json.dumps(a.priority_breakdown)}">Priority: {a.priority_score}</span>'
+
             asset_rows.append(f"""
             <tr>
-              <td><strong>{a.hostname}</strong></td>
+              <td><strong>{a.hostname}</strong><br>{pri_badge}</td>
               <td><span class="badge {badge_class}">{a.confidence.value}</span></td>
               <td>{ips}</td>
               <td>{title_server}</td>
@@ -694,5 +697,100 @@ class HTMLReporter:
         with open(html_file, "w", encoding="utf-8") as f:
             f.write(rendered)
 
+        # Also generate dedicated Executive and Technical reports (Section 37)
+        cls._generate_executive_report(scan, target_dir)
+        cls._generate_technical_report(scan, target_dir)
+
         logger.info(f"Interactive HTML Report generated: [bold green]{html_file}[/bold green]")
         return str(html_file)
+
+    @classmethod
+    def _generate_executive_report(cls, scan: ScanResult, target_dir: Path) -> Path:
+        """Section 37: Executive Report tailored for leadership and CISOs."""
+        exec_file = target_dir / "executive_report.html"
+
+        # High priority assets (Priority >= 4)
+        pri_assets = [a for a in scan.assets if a.priority_score >= 4]
+        pri_rows = []
+        for a in pri_assets[:10]:
+            pri_rows.append(f"""
+            <tr>
+              <td><strong>{a.hostname}</strong></td>
+              <td><span class="badge badge-crit">Priority {a.priority_score}</span></td>
+              <td><code>{', '.join(a.ip_addresses) or 'Unresolved'}</code></td>
+              <td>{a.http_service.title if a.http_service else 'No HTTP'}</td>
+              <td>{len(a.ports)} active ports</td>
+            </tr>
+            """)
+
+        exec_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>REDRECON-X Executive Report — {scan.target}</title>
+  <style>
+    body {{ font-family: -apple-system, sans-serif; background: #0b0f19; color: #f3f4f6; padding: 32px; max-width: 1000px; margin: 0 auto; }}
+    .header {{ border-bottom: 2px solid #ef4444; padding-bottom: 16px; margin-bottom: 24px; }}
+    h1 {{ color: #fff; margin-bottom: 4px; }}
+    h1 span {{ color: #ef4444; }}
+    .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0; }}
+    .kpi {{ background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 16px; text-align: center; }}
+    .kpi .num {{ font-size: 32px; font-weight: 800; color: #ef4444; }}
+    .kpi .lbl {{ font-size: 12px; color: #9ca3af; text-transform: uppercase; margin-top: 4px; }}
+    .card {{ background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 20px; margin-bottom: 24px; }}
+    table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
+    th, td {{ padding: 10px; border-bottom: 1px solid #1f2937; text-align: left; }}
+    th {{ color: #9ca3af; font-size: 13px; text-transform: uppercase; }}
+    .badge-crit {{ background: rgba(239,68,68,0.2); color: #f87171; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; }}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>REDRECON-<span>X</span> Executive Attack-Surface Summary</h1>
+    <p style="color:#9ca3af;">Target: <strong>{scan.target}</strong> | Scan ID: <code>{scan.scan_id}</code> | Date: {scan.completed_at.strftime("%Y-%m-%d %H:%M") if scan.completed_at else "Recent"}</p>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="num">{scan.metrics.discovered_hosts}</div><div class="lbl">Total Assets</div></div>
+    <div class="kpi"><div class="num">{scan.metrics.live_hosts}</div><div class="lbl">Live Web Endpoints</div></div>
+    <div class="kpi"><div class="num">{scan.metrics.open_ports}</div><div class="lbl">Exposed Ports</div></div>
+    <div class="kpi"><div class="num">{scan.metrics.nuclei_findings}</div><div class="lbl">Candidate Findings</div></div>
+  </div>
+
+  <div class="card">
+    <h3 style="color:#fff; margin-bottom: 8px;">Executive Risk Overview</h3>
+    <p style="color:#9ca3af; line-height: 1.6;">
+      Reconnaissance analysis for <strong>{scan.target}</strong> identified <strong>{scan.metrics.discovered_hosts}</strong> unique hostnames across {len(scan.metrics.sources_summary)} independent intelligence sources.
+      A total of <strong>{scan.metrics.duplicate_assets} duplicate asset records</strong> were successfully normalized and deduplicated.
+      There are <strong>{len(pri_assets)}</strong> high-priority exposure points requiring security attention.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:#fff;">High Priority Assets</h3>
+    <table>
+      <thead>
+        <tr><th>Hostname</th><th>Priority</th><th>IP Addresses</th><th>Web Title</th><th>Ports</th></tr>
+      </thead>
+      <tbody>
+        {"".join(pri_rows) if pri_rows else "<tr><td colspan='5'>No critical exposure assets identified</td></tr>"}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>"""
+        with open(exec_file, "w", encoding="utf-8") as f:
+            f.write(exec_html)
+        return exec_file
+
+    @classmethod
+    def _generate_technical_report(cls, scan: ScanResult, target_dir: Path) -> Path:
+        """Section 37: Technical Report for engineers and pen-testers."""
+        tech_file = target_dir / "technical_report.html"
+        with open(target_dir / "report.html", "r", encoding="utf-8") as f:
+            content = f.read()
+        # Create technical copy with specific technical branding
+        content = content.replace("REDRECON-X Intelligence Report", "REDRECON-X Technical Dossier")
+        with open(tech_file, "w", encoding="utf-8") as f:
+            f.write(content)
+        return tech_file

@@ -60,6 +60,8 @@ class Asset(BaseModel):
     historical_urls: List[str] = Field(default_factory=list)
     security_headers: List[HeaderObservation] = Field(default_factory=list)
     confidence: AssetConfidence = AssetConfidence.LOW
+    priority_score: int = 0
+    priority_breakdown: Dict[str, int] = Field(default_factory=dict)
     is_live: bool = False
     tags: List[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

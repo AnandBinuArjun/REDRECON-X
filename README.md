@@ -235,14 +235,56 @@ AVAILABLE MODULES
 [12] Report Generator
 ```
 
-### 5. Web Intelligence Dashboard
+### 5. Attack Surface Drift & Difference Engine (§27 & §48)
 
-Launch the interactive FastAPI web dashboard:
+Track changes over time across scans:
+
+```bash
+redrecon diff example.com                      # Compare the two most recent scans of example.com
+redrecon diff RX-20260920-001 RX-20260928-002  # Compare two specific scan IDs
+```
+
+The difference engine detects:
+- `+ New Assets` (first observed in the recent scan)
+- `- Removed Assets` (disappeared or unresolvable since last scan)
+- `! New Open Ports / Services`
+- `! New Candidate Findings` & `✓ Remediated Findings`
+- Configuration changes in defensive security headers
+
+### 6. Transparent Attack Surface Priority Scoring (§38)
+
+Unlike arbitrary risk scores, REDRECON-X calculates a transparent additive priority based strictly on observable exposure characteristics:
+
+$$\text{Priority} = \text{Internet Exposed (+3)} + \text{Service Exposure (+1)} + \text{Admin Context (+2)} + \text{Config Observation (+1)} + \text{Candidate Finding (+2)}$$
+
+### 7. Executive & Technical Reports (§37)
+
+Generate and open dedicated report formats:
+
+```bash
+redrecon report example.com --type all         # Comprehensive interactive cyber report
+redrecon report example.com --type executive   # CISO & leadership risk posture summary
+redrecon report example.com --type technical   # Detailed technical dossier
+```
+
+### 8. Web Intelligence Dashboard & REST API (§35)
+
+Launch the interactive web dashboard and REST API:
 
 ```bash
 redrecon dashboard --port 8000
 ```
-Then visit `http://127.0.0.1:8000` to inspect previous scans, explore interactive attack-surface graph topologies, or trigger new scans.
+
+Available REST Endpoints:
+- `GET  /api/scans` — List scan history & metrics
+- `POST /api/scans` — Trigger a new scan (`{"target": "example.com", "mode": "full"}`)
+- `GET  /api/scans/{id}` — Full scan details & correlated assets
+- `GET  /api/scans/{id}/diff` — Attack surface drift against previous baseline scan
+- `GET  /api/scans/{id}/graph` — Cytoscape / React Flow attack-surface graph
+- `GET  /api/assets` — Query assets with filters (`?confidence=HIGH&min_priority=4`)
+- `GET  /api/assets/{id}` — Detailed asset entity by database ID
+- `GET  /api/findings` — Query findings with filters (`?severity=HIGH`)
+- `GET  /api/reports/{id}` — Report paths and artifact links
 
 ---
 

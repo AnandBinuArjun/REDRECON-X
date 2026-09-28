@@ -290,3 +290,42 @@ async def run_nuclei_command(target: str):
 
     console.print(table)
     console.print()
+
+
+async def run_diff_command(target_or_scan1: str, scan2: Optional[str] = None):
+    print_banner()
+    repo = ScanRepository(Database())
+
+    if scan2:
+        s1 = repo.get_scan(target_or_scan1)
+        s2 = repo.get_scan(scan2)
+        if not s1:
+            console.print(f"[bold red]Scan not found:[/bold red] {target_or_scan1}")
+            return
+        if not s2:
+            console.print(f"[bold red]Scan not found:[/bold red] {scan2}")
+            return
+    else:
+        # Check if target_or_scan1 is a scan_id
+        s2 = repo.get_scan(target_or_scan1)
+        if s2:
+            s1 = repo.get_previous_scan_for_target(s2.target, exclude_scan_id=s2.scan_id)
+            if not s1:
+                console.print(f"[yellow]Only one scan exists for target {s2.target}. Need at least two scans to compute drift.[/yellow]")
+                return
+        else:
+            # Assume it's a domain/target
+            target = target_or_scan1
+            scans = [s for s in repo.list_scans(limit=10) if s["target"] == target]
+            if len(scans) < 2:
+                console.print(f"[yellow]Need at least two completed scans for '{target}' to compute attack-surface drift. Found: {len(scans)}[/yellow]")
+                return
+            s2 = repo.get_scan(scans[0]["scan_id"])  # most recent
+            s1 = repo.get_scan(scans[1]["scan_id"])  # earlier scan
+
+    from redrecon.intelligence.difference import AttackSurfaceDifferenceEngine
+    diff = AttackSurfaceDifferenceEngine.compare_scans(s1, s2)
+    diff_table = AttackSurfaceDifferenceEngine.render_rich_diff(diff)
+    console.print()
+    console.print(diff_table)
+    console.print()

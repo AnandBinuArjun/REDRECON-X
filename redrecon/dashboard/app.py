@@ -418,6 +418,80 @@ def get_scan_graph(scan_id: str):
     return AssetCorrelator.generate_attack_surface_graph(scan.target, scan.assets)
 
 
+@app.get("/api/scans/{scan_id}/diff", dependencies=[Depends(verify_api_key)])
+def get_scan_diff(scan_id: str):
+    scan = repo.get_scan(scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    prev_scan = repo.get_previous_scan_for_target(scan.target, exclude_scan_id=scan_id)
+    if not prev_scan:
+        return {"message": "No baseline scan found for target comparison", "target": scan.target}
+    from redrecon.intelligence.difference import AttackSurfaceDifferenceEngine
+    diff = AttackSurfaceDifferenceEngine.compare_scans(prev_scan, scan)
+    return diff.model_dump(mode="json")
+
+
+@app.get("/api/assets", dependencies=[Depends(verify_api_key)])
+def list_assets(
+    target: Optional[str] = None,
+    scan_id: Optional[str] = None,
+    confidence: Optional[str] = None,
+    min_priority: Optional[int] = None,
+    limit: int = 100,
+):
+    return repo.list_assets(
+        target=target,
+        scan_id=scan_id,
+        confidence=confidence,
+        min_priority=min_priority,
+        limit=limit,
+    )
+
+
+@app.get("/api/assets/{asset_id}", dependencies=[Depends(verify_api_key)])
+def get_asset(asset_id: int):
+    asset = repo.get_asset(asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return asset
+
+
+@app.get("/api/findings", dependencies=[Depends(verify_api_key)])
+def list_findings(
+    target: Optional[str] = None,
+    scan_id: Optional[str] = None,
+    severity: Optional[str] = None,
+    limit: int = 100,
+):
+    return repo.list_findings(
+        target=target,
+        scan_id=scan_id,
+        severity=severity,
+        limit=limit,
+    )
+
+
+@app.get("/api/reports/{scan_id}", dependencies=[Depends(verify_api_key)])
+def get_report(scan_id: str):
+    scan = repo.get_scan(scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return {
+        "scan_id": scan.scan_id,
+        "target": scan.target,
+        "mode": scan.mode.value,
+        "status": scan.status.value,
+        "metrics": scan.metrics.model_dump(),
+        "report_paths": {
+            "json_summary": f"reports/{scan.target}/summary.json",
+            "json_full": f"reports/{scan.target}/scan.json",
+            "html_unified": f"reports/{scan.target}/report.html",
+            "html_executive": f"reports/{scan.target}/executive_report.html",
+            "html_technical": f"reports/{scan.target}/technical_report.html",
+        }
+    }
+
+
 @app.get("/api/modules", dependencies=[Depends(verify_api_key)])
 def list_modules():
     return [
@@ -436,6 +510,7 @@ async def _background_scan(target: str, mode: str):
 
 
 @app.post("/api/scan", dependencies=[Depends(verify_api_key)])
+@app.post("/api/scans", dependencies=[Depends(verify_api_key)])
 def trigger_scan(req: NewScanRequest, background_tasks: BackgroundTasks):
     norm_target = ScopeValidator.normalize_host(req.target, strip_wildcard=True)
     if not ScopeValidator.is_valid_domain(norm_target):

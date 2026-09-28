@@ -8,6 +8,7 @@ from redrecon.cli.banner import print_banner
 from redrecon.cli.commands import (
     list_modules_command,
     run_cert_command,
+    run_diff_command,
     run_dns_command,
     run_headers_command,
     run_http_command,
@@ -99,11 +100,28 @@ def dashboard(
     start_dashboard(host=host, port=port)
 
 
-@app.command("report", help="Locate and open the generated HTML report for a target.")
-def report_cmd(target: str = typer.Argument(..., help="Target domain")):
-    path = os.path.join("reports", target, "report.html")
+@app.command("diff", help="Compute attack-surface drift between two scans or the latest two scans of a target.")
+def diff_cmd(
+    target_or_scan1: str = typer.Argument(..., help="Target domain (e.g. example.com) or base scan ID"),
+    scan2: Optional[str] = typer.Argument(None, help="Optional comparison scan ID (e.g. RX-20260928-123456)"),
+):
+    asyncio.run(run_diff_command(target_or_scan1, scan2))
+
+
+@app.command("report", help="Locate and open generated HTML reports for a target.")
+def report_cmd(
+    target: str = typer.Argument(..., help="Target domain"),
+    report_type: str = typer.Option("all", "--type", "-t", help="Report view: 'all', 'executive', or 'technical'"),
+):
+    filename = "report.html"
+    if report_type == "executive":
+        filename = "executive_report.html"
+    elif report_type == "technical":
+        filename = "technical_report.html"
+
+    path = os.path.join("reports", target, filename)
     if os.path.exists(path):
-        console.print(f"[bold green]Opening HTML report:[/bold green] {path}")
+        console.print(f"[bold green]Opening {report_type.upper()} HTML report:[/bold green] {path}")
         webbrowser.open(f"file://{os.path.abspath(path)}")
     else:
         console.print(f"[bold red]Report not found:[/bold red] {path}. Run 'redrecon scan {target}' first.")

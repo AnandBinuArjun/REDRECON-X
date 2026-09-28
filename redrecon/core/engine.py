@@ -265,6 +265,21 @@ class ReconEngine:
             raw_data=raw_data,
         )
 
+        # Check for previous scan to compute attack-surface drift
+        try:
+            prev_scan = self.repo.get_previous_scan_for_target(norm_target, exclude_scan_id=scan_id)
+            if prev_scan:
+                from redrecon.intelligence.difference import AttackSurfaceDifferenceEngine
+                diff = AttackSurfaceDifferenceEngine.compare_scans(prev_scan, scan_result)
+                raw_data["attack_surface_diff"] = diff.model_dump(mode="json")
+                logger.info(
+                    f"[bold magenta]Attack Surface Drift[/bold magenta]: "
+                    f"+{len(diff.new_assets)} new assets, -{len(diff.removed_assets)} removed, "
+                    f"+{len(diff.new_findings)} new findings vs {prev_scan.scan_id}"
+                )
+        except Exception as e:
+            logger.warning(f"Could not compute attack surface diff: {e}")
+
         # -------------------------------------------------------------
         # STAGE 5: Storage & Reporting
         # -------------------------------------------------------------
