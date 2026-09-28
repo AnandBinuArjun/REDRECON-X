@@ -62,41 +62,44 @@ class NucleiScanner(BaseModule):
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, _ = await proc.communicate()
-
-            for line in stdout.decode("utf-8", errors="ignore").splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    data = json.loads(line)
-                    info = data.get("info", {})
-                    raw_sev = str(info.get("severity", "info")).upper()
-
-                    # Map severity
-                    try:
-                        severity = FindingSeverity(raw_sev)
-                    except ValueError:
-                        severity = FindingSeverity.INFO
-
-                    findings.append(
-                        Finding(
-                            id=str(uuid.uuid4())[:8],
-                            target=data.get("matched-at", target_url),
-                            source="nuclei",
-                            template_id=data.get("template-id"),
-                            name=info.get("name", data.get("template-id", "Unknown Nuclei Finding")),
-                            severity=severity,
-                            description=info.get("description", ""),
-                            evidence=data.get("extracted-results", [None])[0] if isinstance(data.get("extracted-results"), list) else None,
-                            reference=info.get("reference", [None])[0] if isinstance(info.get("reference"), list) else None,
-                        )
-                    )
-                except json.JSONDecodeError:
-                    continue
+            return self.parse_nuclei_jsonl(stdout.decode("utf-8", errors="ignore"), default_target=target_url)
         except Exception as e:
             logger.warning(f"Nuclei execution failed: {e}. Falling back to native auditor.")
             return await self.scan_host_native(target_url)
 
+    def parse_nuclei_jsonl(self, jsonl_content: str, default_target: str = "") -> List[Finding]:
+        """Parse Nuclei JSONL stream content into normalized Finding models."""
+        findings: List[Finding] = []
+        for line in jsonl_content.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                info = data.get("info", {})
+                raw_sev = str(info.get("severity", "info")).upper()
+
+                # Map severity
+                try:
+                    severity = FindingSeverity(raw_sev)
+                except ValueError:
+                    severity = FindingSeverity.INFO
+
+                findings.append(
+                    Finding(
+                        id=str(uuid.uuid4())[:8],
+                        target=data.get("matched-at", default_target),
+                        source="nuclei",
+                        template_id=data.get("template-id"),
+                        name=info.get("name", data.get("template-id", "Unknown Nuclei Finding")),
+                        severity=severity,
+                        description=info.get("description", ""),
+                        evidence=data.get("extracted-results", [None])[0] if isinstance(data.get("extracted-results"), list) else None,
+                        reference=info.get("reference", [None])[0] if isinstance(info.get("reference"), list) else None,
+                    )
+                )
+            except Exception:
+                continue
         return findings
 
     async def scan_host_native(self, target_url: str) -> List[Finding]:

@@ -23,7 +23,7 @@
 
 ## 1. Overview
 
-**REDRECON-X** is an enterprise-grade, modular attack-surface intelligence and automated reconnaissance framework written in Python. Rather than acting as a disjointed script wrapper, REDRECON-X functions as an **asset intelligence engine**: it orchestrates passive enumeration, active resolution, HTTP probing, defensive header analysis, port fingerprinting, and security audits into a **unified graph-based attack surface model**.
+**REDRECON-X** is an academic-grade, modular attack-surface intelligence and automated reconnaissance framework written in Python. Rather than acting as a disjointed script wrapper, REDRECON-X functions as an **asset intelligence engine**: it orchestrates passive enumeration, active resolution, HTTP probing, defensive header analysis, port fingerprinting, and security audits into a **unified graph-based attack surface model**.
 
 ```text
                      REDRECON-X
@@ -190,9 +190,11 @@ Executes the complete pipeline: Scope Check &rarr; CT &rarr; Subdomains &rarr; D
 
 ```bash
 redrecon full example.com                      # Direct command
-# or:
-redrecon scan example.com --mode full          # Standard command
+# or with configurable active scan limits:
+redrecon scan example.com --mode full --max-nmap-targets 25 --max-nuclei-targets 30 --max-http-targets 150
 ```
+
+> **Target Limit Configuration**: For responsible operations, active intrusive probes (Nmap & Nuclei) have safety defaults (`max_nmap_targets: 10`, `max_nuclei_targets: 15`). In authorized environments, expand these limits up to your authorized scope using CLI flags or `configs/default.yaml`.
 
 ### 2. Passive Reconnaissance Mode
 Discovers certificates, subdomains, archive URLs, and DNS records without launching active port probes or intrusive vulnerability scans.
@@ -291,6 +293,19 @@ Available REST Endpoints:
 - `GET  /api/findings` — Query findings with filters (`?severity=HIGH`)
 - `GET  /api/reports/{id}` — Report paths and artifact links
 
+### 9. Empirical Research Benchmark Engine
+
+For academic evaluation and dissertation defense, REDRECON-X provides a dedicated benchmark command that measures multi-source yield, deduplication performance, and live verification ratios against single-source Certificate Transparency:
+
+```bash
+redrecon benchmark example.com
+```
+
+This exports three reproducible evaluation artifacts in `reports/benchmark_<target>_<timestamp>/`:
+- `benchmark.json` — Machine-readable evaluation dataset including config hash and platform metrics
+- `benchmark.csv` — Delimited metrics suitable for importing directly into LaTeX, R, or Python dataframes
+- `benchmark.html` — Interactive visualization with provider distribution and metric cards
+
 ---
 
 ## 6. Organized Output Structure
@@ -375,7 +390,11 @@ For academic thesis work, cybersecurity dissertations, or comparative benchmarks
 python -m pytest tests/ -v
 ```
 
-All 14 unit and integration tests validate scope enforcement, deduplication efficiency, prioritization algorithms, header rules, correlation mapping, and SQLite storage.
+All **26 automated tests** validate the core framework:
+- **Unit & Logic Tests**: Scope boundaries, normalization, multi-source deduplication, transparent priority scoring, defensive header analysis, correlation models, and SQLite persistence.
+- **Drift & Difference Engine**: Validation of asset/port/finding delta detection between baseline and active scans.
+- **Failure Resilience**: Graceful handling of corrupt/truncated Nmap XML, malformed/non-JSON Nuclei output, DNS timeouts, and third-party cloud infrastructure bypass attempts.
+- **Security Hardening**: Enforces rejection of API keys provided via URL query strings (`?api_key=`), ensuring authentication strictly relies on `X-API-Key` or `Authorization: Bearer` request headers.
 
 ---
 

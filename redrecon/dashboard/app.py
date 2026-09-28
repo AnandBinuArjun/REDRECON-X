@@ -315,8 +315,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     function closeNewScan() { document.getElementById('scanModal').style.display = 'none'; }
 
     function getAuthHeaders() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const key = urlParams.get('api_key') || localStorage.getItem('redrecon_api_key') || '';
+      // Secure in-session storage only; strictly avoid reading credentials from URL query parameters
+      const key = sessionStorage.getItem('redrecon_api_key') || '';
       return key ? { 'X-API-Key': key } : {};
     }
 
@@ -324,9 +324,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       try {
         const res = await fetch('/api/scans', { headers: getAuthHeaders() });
         if (res.status === 401) {
-          const key = prompt('Authentication required. Enter REDRECON API key:');
+          const key = prompt('Authentication required. Enter REDRECON API key (sent securely via X-API-Key header):');
           if (key) {
-            localStorage.setItem('redrecon_api_key', key.trim());
+            sessionStorage.setItem('redrecon_api_key', key.trim());
             return loadScans();
           }
         }

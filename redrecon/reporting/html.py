@@ -13,6 +13,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>REDRECON-X Intelligence Report — __TARGET__</title>
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style>
     :root {
       --bg: #090d16;
@@ -319,11 +320,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Tab 1: Attack Surface Topology Graph -->
   <div id="tab-graph" class="tab-pane active">
     <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Asset Relationship Topology (Root &rarr; Hosts &rarr; IPs &rarr; Ports)</div>
+      <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="panel-title">Interactive Attack Surface Graph Topology (Root &rarr; Subdomains &rarr; IPs &rarr; Ports &rarr; Services)</div>
+        <div style="display:flex; gap:8px;">
+          <button class="cat-pill active" onclick="if(network) network.fit();">Fit View</button>
+          <button class="cat-pill" onclick="togglePhysics();">Toggle Physics</button>
+          <button class="cat-pill" onclick="toggleTreeView();">Toggle Tree View</button>
+        </div>
       </div>
-      <div class="graph-container">
+      <div id="visNetwork" style="width: 100%; height: 550px; background: #060911; border-radius: 8px; border: 1px solid var(--card-border);"></div>
+      <div id="treeContainer" class="graph-container" style="display:none; margin-top:16px;">
         __GRAPH_HTML__
+      </div>
+      <div id="nodeInspector" style="margin-top:12px; padding:12px; background:#111827; border-radius:6px; font-size:13px; color:#9ca3af; display:none;">
+        <span id="nodeInspectorText"></span>
       </div>
     </div>
   </div>
@@ -530,6 +540,101 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
       });
     }
+
+    const rawGraphData = __RAW_GRAPH_JSON__;
+    let network = null;
+    let physicsEnabled = true;
+
+    function initVisGraph() {
+      const container = document.getElementById('visNetwork');
+      if (!container || !rawGraphData || !rawGraphData.nodes || rawGraphData.nodes.length === 0) {
+        if (container) container.innerHTML = '<p style="color:#9ca3af; text-align:center; padding-top:240px;">No graph nodes discovered</p>';
+        return;
+      }
+
+      const colorMap = {
+        root: { background: '#ef4444', border: '#b91c1c' },
+        subdomain: { background: '#06b6d4', border: '#0891b2' },
+        ip: { background: '#f59e0b', border: '#d97706' },
+        port: { background: '#8b5cf6', border: '#7c3aed' },
+        http_service: { background: '#10b981', border: '#059669' },
+        finding: { background: '#dc2626', border: '#991b1b' }
+      };
+
+      const visNodes = rawGraphData.nodes.map(n => {
+        const colors = colorMap[n.type] || { background: '#64748b', border: '#475569' };
+        return {
+          id: n.id,
+          label: n.label,
+          shape: n.type === 'root' ? 'diamond' : (n.type === 'ip' ? 'circle' : 'box'),
+          color: {
+            background: colors.background,
+            border: colors.border,
+            highlight: { background: '#ffffff', border: '#ef4444' }
+          },
+          font: { color: '#ffffff', size: n.type === 'root' ? 15 : 11, face: '-apple-system, sans-serif' },
+          borderWidth: 2,
+          shadow: true,
+          details: n.details
+        };
+      });
+
+      const visEdges = rawGraphData.edges.map(e => ({
+        from: e.source,
+        to: e.target,
+        label: e.label,
+        arrows: 'to',
+        color: { color: '#374151', highlight: '#ef4444' },
+        font: { color: '#9ca3af', size: 9, align: 'middle' },
+        smooth: { type: 'cubicBezier' }
+      }));
+
+      const data = { nodes: new vis.DataSet(visNodes), edges: new vis.DataSet(visEdges) };
+      const options = {
+        physics: {
+          stabilization: false,
+          barnesHut: { gravitationalConstant: -3500, springConstant: 0.04, springLength: 90 }
+        },
+        interaction: { hover: true, tooltipDelay: 200 }
+      };
+
+      network = new vis.Network(container, data, options);
+
+      network.on('click', function(params) {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          const node = visNodes.find(n => n.id === nodeId);
+          if (node) {
+            const insp = document.getElementById('nodeInspector');
+            const txt = document.getElementById('nodeInspectorText');
+            insp.style.display = 'block';
+            txt.innerHTML = `<strong>Selected Entity:</strong> ${node.label} [${node.id}] &nbsp;|&nbsp; <strong>Details:</strong> <code>${JSON.stringify(node.details)}</code>`;
+          }
+        }
+      });
+    }
+
+    function togglePhysics() {
+      if (!network) return;
+      physicsEnabled = !physicsEnabled;
+      network.setOptions({ physics: { enabled: physicsEnabled } });
+    }
+
+    function toggleTreeView() {
+      const net = document.getElementById('visNetwork');
+      const tree = document.getElementById('treeContainer');
+      if (net.style.display === 'none') {
+        net.style.display = 'block';
+        tree.style.display = 'none';
+      } else {
+        net.style.display = 'none';
+        tree.style.display = 'block';
+      }
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(initVisGraph, 100);
+    });
   </script>
 </body>
 </html>
@@ -693,6 +798,7 @@ class HTMLReporter:
             .replace("__DUPLICATES_REMOVED__", str(scan.metrics.duplicate_assets))
             .replace("__GRAPH_NODES__", str(graph_data["total_nodes"]))
             .replace("__GRAPH_EDGES__", str(graph_data["total_edges"]))
+            .replace("__RAW_GRAPH_JSON__", json.dumps(graph_data))
         )
 
         with open(html_file, "w", encoding="utf-8") as f:

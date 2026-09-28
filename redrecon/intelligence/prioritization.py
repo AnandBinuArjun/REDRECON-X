@@ -61,7 +61,7 @@ class AssetPrioritizer:
                  + service exposure (+1)
                  + administrative context (+2)
                  + configuration observations (+1)
-                 + validated scanner findings (+2)
+                 + candidate security findings (+2)
         """
         breakdown: Dict[str, int] = {}
 
@@ -85,7 +85,7 @@ class AssetPrioritizer:
         has_config_gap = any(obs.status in ("MISSING", "MISCONFIGURED") for obs in asset.security_headers)
         breakdown["configuration_observations"] = 1 if has_config_gap else 0
 
-        # 5. Scanner findings (+2): Validated candidate vulnerabilities
+        # 5. Scanner findings (+2): Candidate security findings (automated scanner detections requiring validation)
         breakdown["scanner_findings"] = 2 if findings_count > 0 else 0
 
         total_priority = sum(breakdown.values())

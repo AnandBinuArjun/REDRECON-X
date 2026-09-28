@@ -78,10 +78,22 @@ class ScanConfig(BaseModel):
     sentry_dsn: Optional[str] = Field(default_factory=lambda: os.getenv("SENTRY_DSN"))
     api_secret_key: Optional[str] = Field(default_factory=lambda: os.getenv("REDRECON_API_KEY"))
 
+    # Target Limits (Configurable Boundaries)
+    max_nmap_targets: int = 50
+    max_nuclei_targets: int = 50
+    max_http_targets: int = 150
+    max_wayback_urls: int = 10000
+
     # Scope
     allowed_domains: List[str] = Field(default_factory=list)
     excluded_domains: List[str] = Field(default_factory=list)
     allow_third_party: bool = False
+
+    def compute_hash(self) -> str:
+        """Computes deterministic SHA256 hash for research reproducibility."""
+        import hashlib
+        dump = self.model_dump_json()
+        return hashlib.sha256(dump.encode("utf-8")).hexdigest()[:16]
 
 
 def load_config(config_path: Optional[str] = None) -> ScanConfig:

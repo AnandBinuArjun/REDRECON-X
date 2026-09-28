@@ -133,3 +133,7 @@ class ScopeValidator:
             if fnmatch.fnmatch(normalized, pattern):
                 return True
         return False
+
+    def filter_scoped_hosts(self, hosts: List[str]) -> List[str]:
+        """Convenience filter returning only hosts that strictly satisfy scope constraints."""
+        return [h for h in hosts if self.is_in_scope(h)]

@@ -120,12 +120,15 @@ class NmapScanner(BaseModule):
                 except Exception:
                     pass
 
-    def parse_nmap_xml(self, xml_path: str) -> List[PortService]:
-        """Parse Nmap XML output to PortService objects."""
+    def parse_nmap_xml(self, xml_source: str) -> List[PortService]:
+        """Parse Nmap XML output (from file path or raw XML string) to PortService objects."""
         ports_list: List[PortService] = []
         try:
-            tree = ET.parse(xml_path)
-            root = tree.getroot()
+            if os.path.exists(xml_source):
+                tree = ET.parse(xml_source)
+                root = tree.getroot()
+            else:
+                root = ET.fromstring(xml_source)
 
             for host in root.findall("host"):
                 ports_elem = host.find("ports")

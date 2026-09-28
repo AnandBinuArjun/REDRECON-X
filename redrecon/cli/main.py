@@ -7,6 +7,7 @@ import typer
 from redrecon.cli.banner import print_banner
 from redrecon.cli.commands import (
     list_modules_command,
+    run_benchmark_command,
     run_cert_command,
     run_diff_command,
     run_dns_command,
@@ -38,8 +39,22 @@ def scan(
     config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to custom configuration YAML"),
     concurrency: Optional[int] = typer.Option(None, "--concurrency", "-t", help="Max concurrent workers"),
     timeout: Optional[float] = typer.Option(None, "--timeout", help="Network timeout in seconds"),
+    max_nmap_targets: Optional[int] = typer.Option(None, "--max-nmap-targets", help="Max IPs to port scan"),
+    max_nuclei_targets: Optional[int] = typer.Option(None, "--max-nuclei-targets", help="Max web targets to audit"),
+    max_http_targets: Optional[int] = typer.Option(None, "--max-http-targets", help="Max hosts to probe over HTTP"),
 ):
-    asyncio.run(run_scan_command(target, mode=mode, config_path=config, concurrency=concurrency, timeout=timeout))
+    asyncio.run(
+        run_scan_command(
+            target,
+            mode=mode,
+            config_path=config,
+            concurrency=concurrency,
+            timeout=timeout,
+            max_nmap_targets=max_nmap_targets,
+            max_nuclei_targets=max_nuclei_targets,
+            max_http_targets=max_http_targets,
+        )
+    )
 
 
 @app.command("full", help="Run full reconnaissance pipeline (Active + Passive + Nmap + Nuclei).")
@@ -48,8 +63,22 @@ def full_cmd(
     config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to custom configuration YAML"),
     concurrency: Optional[int] = typer.Option(None, "--concurrency", "-t", help="Max concurrent workers"),
     timeout: Optional[float] = typer.Option(None, "--timeout", help="Network timeout in seconds"),
+    max_nmap_targets: Optional[int] = typer.Option(None, "--max-nmap-targets", help="Max IPs to port scan"),
+    max_nuclei_targets: Optional[int] = typer.Option(None, "--max-nuclei-targets", help="Max web targets to audit"),
+    max_http_targets: Optional[int] = typer.Option(None, "--max-http-targets", help="Max hosts to probe over HTTP"),
 ):
-    asyncio.run(run_scan_command(target, mode="full", config_path=config, concurrency=concurrency, timeout=timeout))
+    asyncio.run(
+        run_scan_command(
+            target,
+            mode="full",
+            config_path=config,
+            concurrency=concurrency,
+            timeout=timeout,
+            max_nmap_targets=max_nmap_targets,
+            max_nuclei_targets=max_nuclei_targets,
+            max_http_targets=max_http_targets,
+        )
+    )
 
 
 @app.command("passive", help="Run passive-only reconnaissance pipeline (CT + Subdomains + Wayback + DNS).")
@@ -126,6 +155,13 @@ def diff_cmd(
     scan2: Optional[str] = typer.Argument(None, help="Optional comparison scan ID (e.g. RX-20260928-123456)"),
 ):
     asyncio.run(run_diff_command(target_or_scan1, scan2))
+
+
+@app.command("benchmark", help="Run empirical research benchmark evaluating multi-source gain, duplicate rates, and verification yield.")
+def benchmark_cmd(
+    target: str = typer.Argument(..., help="Authorized target domain (e.g. example.com)"),
+):
+    asyncio.run(run_benchmark_command(target))
 
 
 @app.command("report", help="Locate and open generated HTML reports for a target.")

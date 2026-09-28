@@ -94,6 +94,9 @@ async def run_scan_command(
     config_path: Optional[str] = None,
     concurrency: Optional[int] = None,
     timeout: Optional[float] = None,
+    max_nmap_targets: Optional[int] = None,
+    max_nuclei_targets: Optional[int] = None,
+    max_http_targets: Optional[int] = None,
 ):
     print_banner()
     cfg = load_config(config_path)
@@ -101,6 +104,12 @@ async def run_scan_command(
         cfg.concurrency = concurrency
     if timeout:
         cfg.timeout = timeout
+    if max_nmap_targets is not None:
+        cfg.max_nmap_targets = max_nmap_targets
+    if max_nuclei_targets is not None:
+        cfg.max_nuclei_targets = max_nuclei_targets
+    if max_http_targets is not None:
+        cfg.max_http_targets = max_http_targets
 
     scan_mode = ScanMode.PASSIVE if mode.lower() == "passive" else ScanMode.FULL
 
@@ -329,3 +338,11 @@ async def run_diff_command(target_or_scan1: str, scan2: Optional[str] = None):
     console.print()
     console.print(diff_table)
     console.print()
+
+
+async def run_benchmark_command(target: str):
+    print_banner()
+    from redrecon.intelligence.benchmark import BenchmarkEngine
+    engine = BenchmarkEngine()
+    metrics = await engine.run_benchmark(target)
+    BenchmarkEngine.render_rich_benchmark(metrics)

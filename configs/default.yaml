@@ -52,6 +52,11 @@ nuclei:
     - "critical"
   rate_limit: 50
 
+max_nmap_targets: 50
+max_nuclei_targets: 50
+max_http_targets: 150
+max_wayback_urls: 10000
+
 scope:
   allow_third_party: false
   allowed_domains: []

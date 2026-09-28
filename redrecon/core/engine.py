@@ -172,7 +172,10 @@ class ReconEngine:
 
             # 3a. HTTP Probing
             timeline.start_stage("http_probing")
-            http_results = await http_scanner.scan_hosts(live_dns_hosts)
+            candidate_http_hosts = live_dns_hosts[:self.config.max_http_targets]
+            if len(live_dns_hosts) > self.config.max_http_targets:
+                logger.info(f"Target limit active: Probing {self.config.max_http_targets} of {len(live_dns_hosts)} hosts (configurable via max_http_targets)")
+            http_results = await http_scanner.scan_hosts(candidate_http_hosts)
             raw_data["http"] = http_results
             timeline.end_stage("http_probing", items_processed=len(http_results))
 
@@ -187,7 +190,11 @@ class ReconEngine:
 
             # 3c. Port Scanning (Nmap / Native socket)
             timeline.start_stage("port_scanning")
-            ports_targets = list(set([norm_target] + list(ip_res.get("unique_ips", []))[:10]))
+            all_ips = list(ip_res.get("unique_ips", []))
+            candidate_ips = all_ips[:self.config.max_nmap_targets]
+            if len(all_ips) > self.config.max_nmap_targets:
+                logger.info(f"Target limit active: Scanning {self.config.max_nmap_targets} of {len(all_ips)} IPs (configurable via max_nmap_targets)")
+            ports_targets = list(set([norm_target] + candidate_ips))
             ports_results = await nmap_scanner.scan_multiple(ports_targets)
             raw_data["nmap"] = {t: [p.model_dump() for p in ps] for t, ps in ports_results.items()}
             total_open_ports = sum(len(ps) for ps in ports_results.values())
@@ -198,7 +205,10 @@ class ReconEngine:
             web_targets = [h_data.get("url") for h_data in http_results.values() if h_data.get("url")]
             if not web_targets:
                 web_targets = [f"https://{norm_target}"]
-            all_findings = await nuclei_scanner.scan_targets(web_targets[:15])  # prioritize top live targets
+            candidate_nuclei = web_targets[:self.config.max_nuclei_targets]
+            if len(web_targets) > self.config.max_nuclei_targets:
+                logger.info(f"Target limit active: Auditing {self.config.max_nuclei_targets} of {len(web_targets)} targets (configurable via max_nuclei_targets)")
+            all_findings = await nuclei_scanner.scan_targets(candidate_nuclei)
             raw_data["nuclei"] = [f.model_dump() for f in all_findings]
             timeline.end_stage("security_scanning", items_processed=len(all_findings))
 
@@ -251,6 +261,24 @@ class ReconEngine:
             scan_duration_sec=timeline.total_duration(),
             sources_summary=sources_summary,
         )
+
+        import platform
+        raw_data["reproducibility"] = {
+            "framework_version": "1.0.0",
+            "developer": "AnandBinuArjun",
+            "python_version": platform.python_version(),
+            "os_platform": platform.platform(),
+            "config_hash": self.config.compute_hash(),
+            "nmap_engine": nmap_scanner.engine if hasattr(nmap_scanner, "engine") else "auto",
+            "nuclei_engine": nuclei_scanner.engine if hasattr(nuclei_scanner, "engine") else "auto",
+            "limits": {
+                "max_nmap_targets": self.config.max_nmap_targets,
+                "max_nuclei_targets": self.config.max_nuclei_targets,
+                "max_http_targets": self.config.max_http_targets,
+                "max_wayback_urls": self.config.max_wayback_urls,
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
         scan_result = ScanResult(
             scan_id=scan_id,
