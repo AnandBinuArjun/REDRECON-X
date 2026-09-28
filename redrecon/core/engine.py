@@ -75,7 +75,73 @@ class ReconEngine:
             "nmap": {},
             "nuclei": {},
         }
+        # Save initial RUNNING scan state
+        initial_scan = ScanResult(
+            scan_id=scan_id,
+            target=norm_target,
+            mode=mode,
+            status=ScanStatus.RUNNING,
+            started_at=datetime.fromtimestamp(timeline.start_time, tz=timezone.utc),
+            completed_at=None,
+            assets=[],
+            findings=[],
+            metrics=ScanMetrics(scan_duration_sec=0.0),
+            raw_data=raw_data,
+        )
+        self.repo.save_scan(initial_scan)
 
+        try:
+            return await self._execute_pipeline(
+                norm_target=norm_target,
+                mode=mode,
+                scan_id=scan_id,
+                timeline=timeline,
+                scope_validator=scope_validator,
+                raw_data=raw_data,
+            )
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            logger.warning(f"Scan {scan_id} interrupted or cancelled. Safely persisting aborted state.")
+            cancelled_scan = ScanResult(
+                scan_id=scan_id,
+                target=norm_target,
+                mode=mode,
+                status=ScanStatus.CANCELLED,
+                started_at=datetime.fromtimestamp(timeline.start_time, tz=timezone.utc),
+                completed_at=datetime.now(timezone.utc),
+                assets=[],
+                findings=[],
+                metrics=ScanMetrics(scan_duration_sec=round(datetime.now().timestamp() - timeline.start_time, 2)),
+                raw_data={"error": "Scan execution interrupted / cancelled", **raw_data},
+            )
+            self.repo.save_scan(cancelled_scan)
+            raise
+        except Exception as exc:
+            logger.error(f"Scan {scan_id} failed: {exc}")
+            failed_scan = ScanResult(
+                scan_id=scan_id,
+                target=norm_target,
+                mode=mode,
+                status=ScanStatus.FAILED,
+                started_at=datetime.fromtimestamp(timeline.start_time, tz=timezone.utc),
+                completed_at=datetime.now(timezone.utc),
+                assets=[],
+                findings=[],
+                metrics=ScanMetrics(scan_duration_sec=round(datetime.now().timestamp() - timeline.start_time, 2)),
+                raw_data={"error": str(exc), **raw_data},
+            )
+            self.repo.save_scan(failed_scan)
+            raise
+
+    async def _execute_pipeline(
+        self,
+        norm_target: str,
+        mode: ScanMode,
+        scan_id: str,
+        timeline: ScanTimeline,
+        scope_validator: ScopeValidator,
+        raw_data: Dict[str, Any],
+    ) -> ScanResult:
+        """Internal execution pipeline for scan stages."""
         # Initialize Scanners
         cert_scanner = CertificateScanner(self.config)
         sub_scanner = SubdomainScanner(self.config)
